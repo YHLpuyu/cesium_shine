@@ -17,10 +17,19 @@ import {
   Material,
   EllipsoidSurfaceAppearance,
   MaterialAppearance,
+  Simon1994PlanetaryPositions,
+  Ray,
+  Cartographic,
+  Plane,
+  Cartesian2,
+  CallbackProperty,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "../src/css/main.css"
 import GUI from "lil-gui";
+
+import { ComputeSunPos } from "./SunHelper";
+import { createTangentPlane } from "./lxshelper";
 
 // Your access token can be found at: https://cesium.com/ion/tokens.
 // This is the default access token
@@ -36,8 +45,79 @@ viewer.scene.globe.enableLighting = true;
 viewer.shadows = true
 const scene = viewer.scene;
 
-const utc=JulianDate.fromDate(new Date("2023/06/23 10:30:00"));
-viewer.clockViewModel.currentTime=JulianDate.addHours(utc,8,new JulianDate());
+const suninitpos = Cartesian3.fromDegrees(120, 30, 200);
+
+const utc = JulianDate.fromDate(new Date("2023/06/23 21:00:00"));
+viewer.clockViewModel.currentTime = JulianDate.addHours(utc, 8, new JulianDate());
+
+const blueBox = viewer.entities.add({
+  name: "Blue box",
+  position: Cartesian3.fromDegrees(120, 30.0, 200),
+  box: {
+    dimensions: new Cartesian3(50, 50, 50),
+    material: Color.BLUE,
+  },
+});
+
+const surfacepos = Cartesian3.fromDegrees(120, 30, 200);
+const ellipsoid = scene.globe.ellipsoid;
+const nor = ellipsoid.geodeticSurfaceNormal(surfacepos);
+const dist = Cartesian3.magnitude(surfacepos);
+const tgplane = new Plane(nor, dist);
+const bluePlane = viewer.entities.add({
+  name: "Blue plane",
+  position: surfacepos,
+  plane: {
+    plane: new Plane(Cartesian3.UNIT_Z, 0),
+    dimensions: new Cartesian2(400.0, 300.0),
+    material: Color.YELLOW,
+  },
+});
+
+const startDate = JulianDate.fromDate(new Date("2023/06/23 20:00:00"));
+const hours = 24;
+const sunposs = [];
+for (let i = 0; i < hours; i++) {
+  const date = new JulianDate();
+  JulianDate.addHours(startDate, i, date);
+  let sunpos = ComputeSunPos(date);
+  const dir = new Cartesian3();
+  Cartesian3.subtract(sunpos, suninitpos, dir);
+  Cartesian3.normalize(dir, dir);
+  const dist = Plane.getPointDistance(tgplane, sunpos);
+  if (dist > 0) {
+    console.log(JulianDate.toDate(date));
+    sunposs.push(dir);
+  }
+}
+console.log(sunposs);
+
+var polyline = viewer.entities.add({
+  polyline: {
+    //使用cesium的peoperty
+    positions: new CallbackProperty(function () {
+      return lxs.positions
+    }, false),
+    show: true,
+    material: Color.RED,
+    width: 3,
+  }
+});
+
+
+const lxs = {
+  dist: 0,
+  positions: [
+    suninitpos,
+    Cartesian3.fromDegrees(120, 30, 300),
+  ]
+};
+
+gui.add(lxs, "dist").listen();
+
+gui.add(suninitpos, "x").onChange(v => {
+  blueBox.position.setValue(suninitpos);
+})
 
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
 
@@ -45,11 +125,14 @@ const box_geom = BoxGeometry.fromDimensions({
   vertexFormat: VertexFormat.POSITION_AND_NORMAL,
   dimensions: new Cartesian3(80, 30, 100)
 });
+const box_axis_x = new Cartesian3(40, 0, 0);
+const box_axis_y = new Cartesian3(0, 15, 0);
+const box_axis_z = new Cartesian3(0, 0, 50);
 
-scene.primitives.add(createBox(16));
+scene.primitives.add(createBox(16,sunposs));
 
 viewer.camera.flyTo({
-  destination: new Cartesian3(-2764033.613852088,4787666.170287514,3171230.9780017845),
+  destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
   orientation: {
     heading: 2.7046360461107177,
     pitch: -25.0 * Math.PI / 180,
@@ -57,8 +140,34 @@ viewer.camera.flyTo({
   }
 });
 
-function createBox(box_num) {
+const dir = new Cartesian3();
+const dis = new Cartesian3;
+scene.preRender.addEventListener((s, t) => {
+  let sunpos = ComputeSunPos(
+    viewer.clockViewModel.currentTime
+  );
+  // lxs.dist = Plane.getPointDistance(tgplane, sunpos);
+  Cartesian3.subtract(sunpos, suninitpos, dir);
+  Cartesian3.normalize(dir, dir);
+  Cartesian3.multiplyByScalar(dir, 300, dis);
+  Cartesian3.add(suninitpos, dis, lxs.positions[1]);
+  // console.log(plane_dist);
+  // Cartesian3.multiplyByScalar(sundir,100,sundir);
+  // Cartesian3.normalize(sunpos,sunpos);
+  // // console.log(sunpos);
+  // Cartesian3.multiplyByScalar(sunpos,100,sunpos);
+
+  // const sunpos =new Cartesian3();
+  // Cartesian3.add(suninitpos,sunpos,sunpos);
+  // blueBox.position.setValue(sunpos);
+  // 需要知道什么时候天黑
+})
+
+
+
+function createBox(box_num, sunposs) {
   const inses = [];
+  const boxinfos = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
   for (let x = 0; x < grid_res; x++) {
     for (let y = 0; y < grid_res; y++) {
@@ -66,44 +175,83 @@ function createBox(box_num) {
         LNG + y * INTERVAL, LAT + x * INTERVAL
         // LNG,LAT
       );
+      const localmatrix=Transforms.eastNorthUpToFixedFrame(cur_pos);
+      const modelmatrix = Matrix4.multiplyByTranslation(
+        localmatrix, new Cartesian3(0, 0, 50), new Matrix4());
       const ins = new GeometryInstance({
         geometry: box_geom,
-        modelMatrix: Matrix4.multiplyByTranslation(
-          Transforms.eastNorthUpToFixedFrame(cur_pos), new Cartesian3(0, 0, 50), new Matrix4()),
+        modelMatrix: modelmatrix,
         attributes: {
           color: ColorGeometryInstanceAttribute.fromColor(Color.WHITE)
         }
       });
       inses.push(ins);
+
+      // store box info
+      const box_x=new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix,box_axis_x,box_x);
+      const box_y=new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix,box_axis_y,box_y);
+      const box_z=new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix,box_axis_z,box_z);
+      boxinfos.push(
+        cur_pos,
+        box_x,
+        box_y,
+        box_z
+      );
     }
   }
 
-  const material=new Material({
-    translucent:false,
-    fabric:{
-      uniforms:{
-        
+  const material = new Material({
+    translucent: false,
+    fabric: {
+
+      uniforms: {
+        lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
+        boxs:{type:`vec3[${boxinfos.length}]`,value:boxinfos}
       }
     }
   });
   const primitive = new Primitive({
     geometryInstances: inses,
     appearance: new MaterialAppearance({
-      translucent:false,
-      fragmentShaderSource:`
+      translucent: false,
+      fragmentShaderSource: `
       in vec3 v_positionMC;
 in vec3 v_positionEC;
 in vec2 v_st;
 
-// uniform vec4 color_0;
-// czm_material czm_getMaterial(czm_materialInput materialInput)
-// {
-// czm_material material = czm_getDefaultMaterial(materialInput);
-// material.diffuse = czm_gammaCorrect(color_0.rgb); 
-// material.alpha = color_0.a; 
-// return material;
-// }
+struct lxs_plane
+{
+  vec3 normal;
+  float distance;
+};
 
+lxs_plane createPlane(vec3 center,vec3 axis)
+{
+  vec3 point=center+axis;
+  vec3 normal=normalize(axis);
+  float dist=-dot(normal,point);
+  lxs_plane lxs=lxs_plane(normal,dist);
+  return lxs;
+}
+
+bool boxIntersect(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
+{
+  //TODO,两个平行平面相交可以只计算一次？
+  lxs_plane x1= createPlane(center,axisx);
+  lxs_plane x2=createPlane(center,-axisx);
+  lxs_plane y1=createPlane(center,axisy);
+  lxs_plane y2=createPlane(center,-axisy);
+  lxs_plane z1=createPlane(center,axisz);
+  lxs_plane z2=createPlane(center,-axisz);
+  int suncount=lxs_0.length();
+  for(int i=0;i<suncount;i++){
+
+  }
+  return false;
+}
 
 void main()
 {
@@ -132,11 +280,11 @@ void main()
     out_FragColor = vec4(material.diffuse + material.emission, material.alpha);
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
-    out_FragColor=vec4(1.);
+    out_FragColor=vec4(lxs_0[0],1.);
 #endif
 }
 `,
-vertexShaderSource:`in vec3 position3DHigh;
+      vertexShaderSource: `in vec3 position3DHigh;
 in vec3 position3DLow;
 in vec2 st;
 in float batchId;
@@ -159,6 +307,7 @@ void main()
     }),
     shadows: ShadowMode.ENABLED
   });
-  primitive.material=material;
+  primitive.appearance.material = material;
   return primitive;
 }
+
