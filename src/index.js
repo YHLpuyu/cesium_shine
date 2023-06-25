@@ -17,6 +17,8 @@ import {
   Material,
   EllipsoidSurfaceAppearance,
   MaterialAppearance,
+  Simon1994PlanetaryPositions,
+  Ray,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "../src/css/main.css"
@@ -35,11 +37,32 @@ const viewer = new Viewer('cesiumContainer', {
 viewer.scene.globe.enableLighting = true;
 viewer.shadows = true
 const scene = viewer.scene;
+console.log(scene);
 
-const utc=JulianDate.fromDate(new Date("2023/06/23 10:30:00"));
-viewer.clockViewModel.currentTime=JulianDate.addHours(utc,8,new JulianDate());
-
+const utc = JulianDate.fromDate(new Date("2023/06/23 10:30:00"));
+viewer.clockViewModel.currentTime = JulianDate.addHours(utc, 8, new JulianDate());
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
+
+const BOX_DIM = 100;
+const blueBox = viewer.entities.add({
+  name: "Blue box",
+  position: Cartesian3.fromDegrees(LNG, LAT, 10),
+  box: {
+    dimensions: new Cartesian3(BOX_DIM, BOX_DIM, BOX_DIM),
+    material: Color.BLUE,
+  },
+});
+
+// let sunpos=new Cartesian3()
+const sunBox = viewer.entities.add({
+  name: "Blue box",
+  position: Cartesian3.fromDegrees(LNG, LAT, 100),
+  box: {
+    dimensions: new Cartesian3(BOX_DIM, BOX_DIM, BOX_DIM),
+    material: Color.RED,
+  },
+});
+
 
 const box_geom = BoxGeometry.fromDimensions({
   vertexFormat: VertexFormat.POSITION_AND_NORMAL,
@@ -48,8 +71,22 @@ const box_geom = BoxGeometry.fromDimensions({
 
 scene.primitives.add(createBox(16));
 
+scene.preRender.addEventListener(function (s, t) {
+  let sunpos = new Cartesian3();
+  Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(viewer.clockViewModel.currentTime, sunpos);
+  console.log(viewer.clockViewModel.currentTime);
+  let dir=new Cartesian3();
+  Cartesian3.subtract(sunpos,blueBox.position._value,dir);
+  Cartesian3.normalize(dir,dir);
+
+  const r=new Ray(blueBox.position._value,dir);
+
+  sunBox.position.setValue(Ray.getPoint(r,200));
+
+});
+
 viewer.camera.flyTo({
-  destination: new Cartesian3(-2764033.613852088,4787666.170287514,3171230.9780017845),
+  destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
   orientation: {
     heading: 2.7046360461107177,
     pitch: -25.0 * Math.PI / 180,
@@ -78,31 +115,22 @@ function createBox(box_num) {
     }
   }
 
-  const material=new Material({
-    translucent:false,
-    fabric:{
-      uniforms:{
-        
+  const material = new Material({
+    translucent: false,
+    fabric: {
+      uniforms: {
+
       }
     }
   });
   const primitive = new Primitive({
     geometryInstances: inses,
     appearance: new MaterialAppearance({
-      translucent:false,
-      fragmentShaderSource:`
+      translucent: false,
+      fragmentShaderSource: `
       in vec3 v_positionMC;
 in vec3 v_positionEC;
 in vec2 v_st;
-
-// uniform vec4 color_0;
-// czm_material czm_getMaterial(czm_materialInput materialInput)
-// {
-// czm_material material = czm_getDefaultMaterial(materialInput);
-// material.diffuse = czm_gammaCorrect(color_0.rgb); 
-// material.alpha = color_0.a; 
-// return material;
-// }
 
 
 void main()
@@ -132,11 +160,11 @@ void main()
     out_FragColor = vec4(material.diffuse + material.emission, material.alpha);
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
-    out_FragColor=vec4(1.);
+    out_FragColor=vec4(1.,1.,0.,1.);
 #endif
 }
 `,
-vertexShaderSource:`in vec3 position3DHigh;
+      vertexShaderSource: `in vec3 position3DHigh;
 in vec3 position3DLow;
 in vec2 st;
 in float batchId;
@@ -159,6 +187,6 @@ void main()
     }),
     shadows: ShadowMode.ENABLED
   });
-  primitive.material=material;
+  primitive.appearance.material = material;
   return primitive;
 }

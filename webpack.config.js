@@ -7,6 +7,7 @@ const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
+    target:"web",
     context: __dirname,
     entry: {
         app: './src/index.js'
