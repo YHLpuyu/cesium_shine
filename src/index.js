@@ -134,16 +134,16 @@ const box_axis_z = new Cartesian3(0, 0, 50);
 scene.primitives.add(createBox(16,sunposs));
 
 scene.preRender.addEventListener(function (s, t) {
-  let sunpos = new Cartesian3();
-  Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(viewer.clockViewModel.currentTime, sunpos);
-  console.log(viewer.clockViewModel.currentTime);
-  let dir=new Cartesian3();
-  Cartesian3.subtract(sunpos,blueBox.position._value,dir);
-  Cartesian3.normalize(dir,dir);
+  // let sunpos = new Cartesian3();
+  // Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(viewer.clockViewModel.currentTime, sunpos);
+  // console.log(viewer.clockViewModel.currentTime);
+  // let dir=new Cartesian3();
+  // Cartesian3.subtract(sunpos,blueBox.position._value,dir);
+  // Cartesian3.normalize(dir,dir);
 
-  const r=new Ray(blueBox.position._value,dir);
+  // const r=new Ray(blueBox.position._value,dir);
 
-  sunBox.position.setValue(Ray.getPoint(r,200));
+  // sunBox.position.setValue(Ray.getPoint(r,200));
 
 });
 
@@ -233,8 +233,10 @@ function createBox(box_num, sunposs) {
     geometryInstances: inses,
     appearance: new MaterialAppearance({
       translucent: false,
-      fragmentShaderSource: `
-      in vec3 v_positionMC;
+      fragmentShaderSource: `#define FLT_MAX 3.402823466e+38
+#define FLT_MIN 1.175494351e-38
+
+in vec3 v_positionMC;
 in vec3 v_positionEC;
 in vec2 v_st;
 
@@ -251,54 +253,71 @@ lxs_planeset createPlaneSet(vec3 center,vec3 axis,vec3 normal)
   vec3 point_near=center-axis;
   float dfar=-dot(normal,point_far);
   float dnear=-dot(normal,point_near);
-  lxs_planeset lxs=lxs_plane(normal,dfar,dnear);
+  lxs_planeset lxs=lxs_planeset(normal,dfar,dnear);
   return lxs;
 }
 
-bool boxIntersect(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
+// the count that ray from pos to sun direction intersects the buildings 
+int boxIntersectCount(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
 {
-  float temp_lxs=0;
+  int intersectcount=0;
+  float temp_lxs=0.;
   vec3 x_nor=normalize(axisx);
   vec3 y_nor=normalize(axisy);
   vec3 z_nor=normalize(axisz);
 
-  lxs_plane x_plantset= createPlane(center,axisx,x_nor);
-  lxs_plane y_plantset=createPlane(center,axisy,y_nor);
-  lxs_plane z_plantset=createPlane(center,axisz,z_nor);
+  lxs_planeset x_plantset= createPlaneSet(center,axisx,x_nor);
+  lxs_planeset y_plantset=createPlaneSet(center,axisy,y_nor);
+  lxs_planeset z_plantset=createPlaneSet(center,axisz,z_nor);
   int suncount=lxs_0.length();
 
   float x_no=dot(x_nor,pos);
   float y_no=dot(y_nor,pos);
   float z_no=dot(z_nor,pos);
 
+  float near=FLT_MIN;
+  float far=FLT_MAX;
+
   for(int i=0;i<suncount;i++){
     float x_nr=dot(x_nor,lxs_0[i]);
     float y_nr=dot(y_nor,lxs_0[i]);
     float z_nr=dot(z_nor,lxs_0[i]);
 
-    // TODO normal and direction's ray is perpendicular
+    if(x_nr!=0.){
+      float x_tnear=(x_plantset.dnear-x_no)/x_nr;
+      float x_tfar=(x_plantset.dfar-x_no)/x_nr;
+      if(x_nr<0.) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
+      near=max(near,x_tnear);
+      far=min(far,x_tfar);
+    }
 
-    float x_tnear=(x_plantset.dnear-x_no)/x_nr;
-    float x_tfar=(x_plantset.dfar-x_no)/x_nr;
-    if(x_nr<0) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
-    float y_tnear=(y_plantset.dnear-y_no)/y_nr;
-    float y_tfar=(x_plantset.dfar-y_no)/y_nr;
-    float z_tnear=(z_plantset.dnear-z_no)/z_nr;
-    float z_tfar=(z_plantset.dfar-z_no)/z_nr;
+    if(y_nr!=0.){
+      float y_tnear=(y_plantset.dnear-y_no)/y_nr;
+      float y_tfar=(x_plantset.dfar-y_no)/y_nr;
+      if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
+      near=max(near,y_tnear);
+      far=min(far,y_tfar);
+    }
 
-    // all the computed t_near values we will keep the largest one,
-    // and of all the computed tfar values, we will keep the smallest one.
-    // an intersection with the volume occurs if the final tfar value is greater
-    // than the tnear value.
+    if(z_nr!=0.){
+      float z_tnear=(z_plantset.dnear-z_no)/z_nr;
+      float z_tfar=(z_plantset.dfar-z_no)/z_nr;
+      if(z_nr<0.) {temp_lxs=z_tnear;z_tnear=z_tfar;z_tfar=temp_lxs;}
+      near=max(near,z_tnear);
+      far=min(far,z_tnear);
+    }
+
+    intersectcount+=1;
   }
-  return false;
+  return intersectcount;
 }
 
 void main()
 {
     czm_materialInput materialInput;
 
-    vec3 normalEC = normalize(czm_normal3D * czm_geodeticSurfaceNormal(v_positionMC, vec3(0.0), vec3(1.0)));
+    vec3 normalMC=czm_geodeticSurfaceNormal(v_positionMC, vec3(0.0), vec3(1.0));
+    vec3 normalEC = normalize(czm_normal3D * normalMC);
 #ifdef FACE_FORWARD
     normalEC = faceforward(normalEC, vec3(0.0, 0.0, 1.0), -normalEC);
 #endif
@@ -321,7 +340,7 @@ void main()
     out_FragColor = vec4(material.diffuse + material.emission, material.alpha);
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
-    out_FragColor=vec4(lxs_0[0],1.);
+    out_FragColor=vec4(normalMC,1.);
 #endif
 }
 `,
