@@ -222,33 +222,49 @@ function createBox(box_num, sunposs) {
 in vec3 v_positionEC;
 in vec2 v_st;
 
-struct lxs_plane
+struct lxs_planeset
 {
   vec3 normal;
-  float distance;
+  float dfar;
+  float dnear;
 };
 
-lxs_plane createPlane(vec3 center,vec3 axis)
+lxs_planeset createPlaneSet(vec3 center,vec3 axis,vec3 normal)
 {
-  vec3 point=center+axis;
-  vec3 normal=normalize(axis);
-  float dist=-dot(normal,point);
-  lxs_plane lxs=lxs_plane(normal,dist);
+  vec3 point_far=center+axis;
+  vec3 point_near=center-axis;
+  float dfar=-dot(normal,point_far);
+  float dnear=-dot(normal,point_near);
+  lxs_planeset lxs=lxs_plane(normal,dfar,dnear);
   return lxs;
 }
 
 bool boxIntersect(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
 {
-  //TODO,两个平行平面相交可以只计算一次？
-  lxs_plane x1= createPlane(center,axisx);
-  lxs_plane x2=createPlane(center,-axisx);
-  lxs_plane y1=createPlane(center,axisy);
-  lxs_plane y2=createPlane(center,-axisy);
-  lxs_plane z1=createPlane(center,axisz);
-  lxs_plane z2=createPlane(center,-axisz);
-  int suncount=lxs_0.length();
-  for(int i=0;i<suncount;i++){
+  vec3 x_nor=normalize(axisx);
+  vec3 y_nor=normalize(axisy);
+  vec3 z_nor=normalize(axisz);
 
+  lxs_plane x_plantset= createPlane(center,axisx,x_nor);
+  lxs_plane y_plantset=createPlane(center,axisy,y_nor);
+  lxs_plane z_plantset=createPlane(center,axisz,z_nor);
+  int suncount=lxs_0.length();
+
+  float x_no=dot(x_nor,pos);
+  float y_no=dot(y_nor,pos);
+  float z_no=dot(z_nor,pos);
+
+  for(int i=0;i<suncount;i++){
+    float x_nr=dot(x_nor,lxs_0[i]);
+    float y_nr=dot(y_nor,lxs_0[i]);
+    float z_nr=dot(z_nor,lxs_0[i]);
+
+    float x_tnear=(x_plantset.dnear-x_no)/x_nr;
+    float x_tfar=(x_plantset.dfar-x_no)/x_nr;
+    float y_tnear=(y_plantset.dnear-y_no)/y_nr;
+    float y_tfar=(x_plantset.dfar-y_no)/y_nr;
+    float z_tnear=(z_plantset.dnear-z_no)/z_nr;
+    float z_tfar=(z_plantset.dfar-z_no)/z_nr;
   }
   return false;
 }
