@@ -257,6 +257,7 @@ lxs_planeset createPlaneSet(vec3 center,vec3 axis,vec3 normal)
 
 bool boxIntersect(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
 {
+  float temp_lxs=0;
   vec3 x_nor=normalize(axisx);
   vec3 y_nor=normalize(axisy);
   vec3 z_nor=normalize(axisz);
@@ -275,12 +276,20 @@ bool boxIntersect(vec3 center,vec3 axisx,vec3 axisy,vec3 axisz,vec3 pos)
     float y_nr=dot(y_nor,lxs_0[i]);
     float z_nr=dot(z_nor,lxs_0[i]);
 
+    // TODO normal and direction's ray is perpendicular
+
     float x_tnear=(x_plantset.dnear-x_no)/x_nr;
     float x_tfar=(x_plantset.dfar-x_no)/x_nr;
+    if(x_nr<0) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
     float y_tnear=(y_plantset.dnear-y_no)/y_nr;
     float y_tfar=(x_plantset.dfar-y_no)/y_nr;
     float z_tnear=(z_plantset.dnear-z_no)/z_nr;
     float z_tfar=(z_plantset.dfar-z_no)/z_nr;
+
+    // all the computed t_near values we will keep the largest one,
+    // and of all the computed tfar values, we will keep the smallest one.
+    // an intersection with the volume occurs if the final tfar value is greater
+    // than the tnear value.
   }
   return false;
 }
