@@ -134,8 +134,7 @@ const box_axis_z = new Cartesian3(0, 0, 50);
 scene.primitives.add(createBox(16,sunposs));
 
 scene.preRender.addEventListener(function (s, t) {
-  // let sunpos = new Cartesian3();
-  // Simon1994PlanetaryPositions.computeSunPositionInEarthInertialFrame(viewer.clockViewModel.currentTime, sunpos);
+  // let sunpos = ComputeSunPos(viewer.clockViewModel.currentTime);
   // console.log(viewer.clockViewModel.currentTime);
   // let dir=new Cartesian3();
   // Cartesian3.subtract(sunpos,blueBox.position._value,dir);
@@ -231,6 +230,7 @@ function createBox(box_num, sunposs) {
   });
   const primitive = new Primitive({
     geometryInstances: inses,
+    asynchronous:false,
     appearance: new MaterialAppearance({
       translucent: false,
       fragmentShaderSource: `#define FLT_MAX 3.402823466e+38
@@ -239,6 +239,7 @@ function createBox(box_num, sunposs) {
 in vec3 v_positionMC;
 in vec3 v_positionEC;
 in vec2 v_st;
+in vec3 v_normal;
 
 struct lxs_planeset
 {
@@ -340,7 +341,8 @@ void main()
     out_FragColor = vec4(material.diffuse + material.emission, material.alpha);
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
-    out_FragColor=vec4(normalMC,1.);
+    vec3 color=vec3(1.);
+    out_FragColor=vec4(v_normal,1.);
 #endif
 }
 `,
@@ -352,6 +354,9 @@ in float batchId;
 out vec3 v_positionMC;
 out vec3 v_positionEC;
 out vec2 v_st;
+out vec3 v_normal;
+
+
 
 void main()
 {
@@ -360,6 +365,7 @@ void main()
     v_positionMC = position3DHigh + position3DLow;           // position in model coordinates
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
     v_st = st;
+    v_normal=czm_octDecode(compressedAttributes.y);
 
     gl_Position = czm_modelViewProjectionRelativeToEye * p;
 }
@@ -368,6 +374,7 @@ void main()
     shadows: ShadowMode.ENABLED
   });
   primitive.appearance.material = material;
+  console.log(primitive);
   return primitive;
 }
 
