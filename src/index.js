@@ -23,6 +23,7 @@ import {
   Plane,
   Cartesian2,
   CallbackProperty,
+  Matrix3,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "../src/css/main.css"
@@ -44,36 +45,35 @@ const viewer = new Viewer('cesiumContainer', {
 viewer.scene.globe.enableLighting = true;
 viewer.shadows = true
 const scene = viewer.scene;
-console.log(scene);
 
 const suninitpos = Cartesian3.fromDegrees(120, 30, 200);
 
 const utc = JulianDate.fromDate(new Date("2023/06/23 21:00:00"));
 viewer.clockViewModel.currentTime = JulianDate.addHours(utc, 8, new JulianDate());
 
-const blueBox = viewer.entities.add({
-  name: "Blue box",
-  position: Cartesian3.fromDegrees(120, 30.0, 200),
-  box: {
-    dimensions: new Cartesian3(50, 50, 50),
-    material: Color.BLUE,
-  },
-});
+// const blueBox = viewer.entities.add({
+//   name: "Blue box",
+//   position: Cartesian3.fromDegrees(120, 30.0, 200),
+//   box: {
+//     dimensions: new Cartesian3(50, 50, 50),
+//     material: Color.BLUE,
+//   },
+// });
 
 const surfacepos = Cartesian3.fromDegrees(120, 30, 200);
 const ellipsoid = scene.globe.ellipsoid;
 const nor = ellipsoid.geodeticSurfaceNormal(surfacepos);
 const dist = Cartesian3.magnitude(surfacepos);
 const tgplane = new Plane(nor, dist);
-const bluePlane = viewer.entities.add({
-  name: "Blue plane",
-  position: surfacepos,
-  plane: {
-    plane: new Plane(Cartesian3.UNIT_Z, 0),
-    dimensions: new Cartesian2(400.0, 300.0),
-    material: Color.YELLOW,
-  },
-});
+// const bluePlane = viewer.entities.add({
+//   name: "Blue plane",
+//   position: surfacepos,
+//   plane: {
+//     plane: new Plane(Cartesian3.UNIT_Z, 0),
+//     dimensions: new Cartesian2(400.0, 300.0),
+//     material: Color.YELLOW,
+//   },
+// });
 
 const startDate = JulianDate.fromDate(new Date("2023/06/23 20:00:00"));
 const hours = 24;
@@ -87,11 +87,9 @@ for (let i = 0; i < hours; i++) {
   Cartesian3.normalize(dir, dir);
   const dist = Plane.getPointDistance(tgplane, sunpos);
   if (dist > 0) {
-    console.log(JulianDate.toDate(date));
     sunposs.push(dir);
   }
 }
-console.log(sunposs);
 
 var polyline = viewer.entities.add({
   polyline: {
@@ -131,7 +129,7 @@ const box_axis_x = new Cartesian3(40, 0, 0);
 const box_axis_y = new Cartesian3(0, 15, 0);
 const box_axis_z = new Cartesian3(0, 0, 50);
 
-scene.primitives.add(createBox(16,sunposs));
+scene.primitives.add(createBox(16, sunposs));
 
 scene.preRender.addEventListener(function (s, t) {
   // let sunpos = ComputeSunPos(viewer.clockViewModel.currentTime);
@@ -145,34 +143,6 @@ scene.preRender.addEventListener(function (s, t) {
   // sunBox.position.setValue(Ray.getPoint(r,200));
 
 });
-
-// test local coordinate
-const box_lxs = BoxGeometry.fromDimensions({
-  vertexFormat: VertexFormat.POSITION_AND_NORMAL,
-  dimensions: new Cartesian3(10, 10, 10)
-});
-const lxs_m=Transforms.eastNorthUpToFixedFrame(suninitpos);
-const lxs_m1=Matrix4.multiplyByTranslation(lxs_m,new Cartesian3(0,10,0),new Matrix4());
-const lxs1=new GeometryInstance({
-  geometry:box_lxs,
-  modelmatrix:lxs_m,
-  attributes:{
-    color:ColorGeometryInstanceAttribute.fromColor(Color.RED)
-  }
-});
-const lxs2=new GeometryInstance({
-  geometry:box_lxs,
-  modelmatrix:lxs_m1,
-  attributes:{
-    color:ColorGeometryInstanceAttribute.fromColor(Color.PURPLE)
-  }
-});
-const lxs_p=new Primitive({
-  geometryInstances:[lxs1,lxs2],
-  asynchronous:false,
-  appearance:new PerInstanceColorAppearance()
-});
-scene.add(lxs_p);
 
 viewer.camera.flyTo({
   destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
@@ -212,13 +182,19 @@ function createBox(box_num, sunposs) {
   const inses = [];
   const boxinfos = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
+  // let local_south=null;
   for (let x = 0; x < grid_res; x++) {
     for (let y = 0; y < grid_res; y++) {
       const cur_pos = Cartesian3.fromDegrees(
         LNG + y * INTERVAL, LAT + x * INTERVAL
         // LNG,LAT
       );
-      const localmatrix=Transforms.eastNorthUpToFixedFrame(cur_pos);
+      const localmatrix = Transforms.eastNorthUpToFixedFrame(cur_pos);
+      // if(!local_south){
+      //   local_south=new Cartesian3(0,-1,0);
+      //   Matrix4.multiplyByPointAsVector(localmatrix,local_south,local_south);
+      //   console.log(local_south);
+      // }
       const modelmatrix = Matrix4.multiplyByTranslation(
         localmatrix, new Cartesian3(0, 0, 50), new Matrix4());
       const ins = new GeometryInstance({
@@ -231,12 +207,12 @@ function createBox(box_num, sunposs) {
       inses.push(ins);
 
       // store box info
-      const box_x=new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix,box_axis_x,box_x);
-      const box_y=new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix,box_axis_y,box_y);
-      const box_z=new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix,box_axis_z,box_z);
+      const box_x = new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix, box_axis_x, box_x);
+      const box_y = new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix, box_axis_y, box_y);
+      const box_z = new Cartesian3();
+      Matrix4.multiplyByPoint(localmatrix, box_axis_z, box_z);
       boxinfos.push(
         cur_pos,
         box_x,
@@ -252,13 +228,14 @@ function createBox(box_num, sunposs) {
 
       uniforms: {
         lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
-        boxs:{type:`vec3[${boxinfos.length}]`,value:boxinfos}
+        boxs: { type: `vec3[${boxinfos.length}]`, value: boxinfos },
+        // localsouth:local_south
       }
     }
   });
   const primitive = new Primitive({
     geometryInstances: inses,
-    asynchronous:false,
+    asynchronous: false,
     appearance: new MaterialAppearance({
       translucent: false,
       fragmentShaderSource: `#define FLT_MAX 3.402823466e+38
@@ -370,6 +347,7 @@ void main()
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
     vec3 color=vec3(1.);
+    vec3 l=lxs_0[0];
     out_FragColor=vec4(v_normal,1.);
 #endif
 }
@@ -378,6 +356,8 @@ void main()
 in vec3 position3DLow;
 in vec2 st;
 in float batchId;
+
+// uniform vec3 localsouth_2;
 
 out vec3 v_positionMC;
 out vec3 v_positionEC;
@@ -394,7 +374,8 @@ void main()
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
     v_st = st;
     v_normal=czm_octDecode(compressedAttributes);
-
+    // float dotnorm_south=dot(v_normal,localsouth_2);
+    // if(dotnorm_south<-.001)v_normal=vec3(0.);
     gl_Position = czm_modelViewProjectionRelativeToEye * p;
 }
 `
@@ -402,7 +383,6 @@ void main()
     shadows: ShadowMode.ENABLED
   });
   primitive.appearance.material = material;
-  console.log(primitive);
   return primitive;
 }
 
