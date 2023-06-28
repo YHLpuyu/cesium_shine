@@ -393,7 +393,7 @@ void main()
     v_positionMC = position3DHigh + position3DLow;           // position in model coordinates
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
     v_st = st;
-    v_normal=czm_octDecode(compressedAttributes.y);
+    v_normal=czm_octDecode(compressedAttributes);
 
     gl_Position = czm_modelViewProjectionRelativeToEye * p;
 }
