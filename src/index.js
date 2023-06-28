@@ -146,6 +146,34 @@ scene.preRender.addEventListener(function (s, t) {
 
 });
 
+// test local coordinate
+const box_lxs = BoxGeometry.fromDimensions({
+  vertexFormat: VertexFormat.POSITION_AND_NORMAL,
+  dimensions: new Cartesian3(10, 10, 10)
+});
+const lxs_m=Transforms.eastNorthUpToFixedFrame(suninitpos);
+const lxs_m1=Matrix4.multiplyByTranslation(lxs_m,new Cartesian3(0,10,0),new Matrix4());
+const lxs1=new GeometryInstance({
+  geometry:box_lxs,
+  modelmatrix:lxs_m,
+  attributes:{
+    color:ColorGeometryInstanceAttribute.fromColor(Color.RED)
+  }
+});
+const lxs2=new GeometryInstance({
+  geometry:box_lxs,
+  modelmatrix:lxs_m1,
+  attributes:{
+    color:ColorGeometryInstanceAttribute.fromColor(Color.PURPLE)
+  }
+});
+const lxs_p=new Primitive({
+  geometryInstances:[lxs1,lxs2],
+  asynchronous:false,
+  appearance:new PerInstanceColorAppearance()
+});
+scene.add(lxs_p);
+
 viewer.camera.flyTo({
   destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
   orientation: {
