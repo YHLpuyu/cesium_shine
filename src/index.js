@@ -24,6 +24,8 @@ import {
   Cartesian2,
   CallbackProperty,
   Matrix3,
+  GeometryInstanceAttribute,
+  ComponentDatatype,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "../src/css/main.css"
@@ -181,7 +183,9 @@ scene.preRender.addEventListener((s, t) => {
 function createBox(box_num, sunposs) {
   const inses = [];
   const boxinfos = [];
+  const boxids=[];
   const grid_res = Math.ceil(Math.sqrt(box_num));
+  let boxid=0;
   // let local_south=null;
   for (let x = 0; x < grid_res; x++) {
     for (let y = 0; y < grid_res; y++) {
@@ -201,9 +205,16 @@ function createBox(box_num, sunposs) {
         geometry: box_geom,
         modelMatrix: modelmatrix,
         attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(Color.WHITE)
+          color: ColorGeometryInstanceAttribute.fromColor(Color.WHITE),
+          boxid:new GeometryInstanceAttribute({
+            componentDatatype:ComponentDatatype.INT,
+            componentsPerAttribute:1,
+            normalize:false,
+            value:[boxid]
+          })
         }
       });
+      // TODO can't find boxid
       inses.push(ins);
 
       // store box info
@@ -219,6 +230,7 @@ function createBox(box_num, sunposs) {
         box_y,
         box_z
       );
+      boxids[boxid]=boxid++;
     }
   }
 
@@ -229,6 +241,7 @@ function createBox(box_num, sunposs) {
       uniforms: {
         lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
         boxs: { type: `vec3[${boxinfos.length}]`, value: boxinfos },
+        boxids:boxids
         // localsouth:local_south
       }
     }
@@ -346,8 +359,9 @@ void main()
     out_FragColor = vec4(material.diffuse + material.emission, material.alpha);
 #else
     // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
-    vec3 color=vec3(1.);
-    vec3 l=lxs_0[0];
+    
+    
+
     out_FragColor=vec4(v_normal,1.);
 #endif
 }
@@ -363,7 +377,7 @@ out vec3 v_positionMC;
 out vec3 v_positionEC;
 out vec2 v_st;
 out vec3 v_normal;
-
+out int v_boxid;
 
 
 void main()
@@ -374,6 +388,7 @@ void main()
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
     v_st = st;
     v_normal=czm_octDecode(compressedAttributes);
+    v_boxid=boxid;
     // float dotnorm_south=dot(v_normal,localsouth_2);
     // if(dotnorm_south<-.001)v_normal=vec3(0.);
     gl_Position = czm_modelViewProjectionRelativeToEye * p;
