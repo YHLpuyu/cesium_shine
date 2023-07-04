@@ -75,24 +75,24 @@ function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
   const z_nr=dot(z_nor,dir);
 
   if(x_nr!=0.){
-    const x_tnear=(x_plantset.dnear-x_no)/x_nr;
-    const x_tfar=(x_plantset.dfar-x_no)/x_nr;
+    let x_tnear=(x_plantset.dnear-x_no)/x_nr;
+    let x_tfar=(x_plantset.dfar-x_no)/x_nr;
     if(x_nr<0.) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
     near=Math.max(near,x_tnear);
     far=Math.min(far,x_tfar);
   }
 
   if(y_nr!=0.){
-    const y_tnear=(y_plantset.dnear-y_no)/y_nr;
-    const y_tfar=(x_plantset.dfar-y_no)/y_nr;
+    let y_tnear=(y_plantset.dnear-y_no)/y_nr;
+    let y_tfar=(x_plantset.dfar-y_no)/y_nr;
     if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
     near=Math.max(near,y_tnear);
     far=Math.min(far,y_tfar);
   }
 
   if(z_nr!=0.){
-    const z_tnear=(z_plantset.dnear-z_no)/z_nr;
-    const z_tfar=(z_plantset.dfar-z_no)/z_nr;
+    let z_tnear=(z_plantset.dnear-z_no)/z_nr;
+    let z_tfar=(z_plantset.dfar-z_no)/z_nr;
     if(z_nr<0.) {temp_lxs=z_tnear;z_tnear=z_tfar;z_tfar=temp_lxs;}
     near=Math.max(near,z_tnear);
     far=Math.min(far,z_tfar);
@@ -105,15 +105,22 @@ function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
 
 function boxintersect()
 {
-    const orgin={x:-2764202.5119327577, y: 4787659.193077054, z: 3270436.725764694}
-    const dest={x: -2763806.7618669868, y: 4787893.766259042, z: 3370632.5759822945}
-    const dir=normalize(sub(dest,orgin));
+    // const orgin={x:-2764202.5119327577, y: 4787659.193077054, z: 3170436.725764694}
+    // const dest={x: -2763806.7618669868, y: 4787893.766259042, z: 3170632.5759822945}
+    
+    const orgin={x: -2764159.2106625685, y: 4787584.193077054, z: 3170386.725764694}
+    const dest={x: -2763763.4605967975, y: 4787818.766259042, z: 3170582.5759822945}
+    
+    const length=sub(dest,orgin)
+    const dir=normalize(length);
+    console.log(length);
 
     const center={x:-2763933.4869667836,y: 4787659.169418869,z:3170469.7359385183};
-    const axisx= {x:-17.34846646284802,y: 30.050345633867277,z: 19.89993564493492};
-    const axisy= {x:-6.505584604118928,y: 11.26891147316329, z: 7.462506493709712};
-    const axisz= {x:-21.68531100317445,y: 37.563088459116656,z:  24.8749205447611};
+    const axisx= {x: -34.64171426197369, y: -19.998790788239386, z: 0};
+    const axisy= {x: -6.495517776628589, y: 12.990250155094142, z: -6.494732378465549};
+    const axisz= {x: 25.00075574592734, y: 0, z: 0};
 
+    console.log(sub(center,orgin))
     // const orgin={x:-1,y:-1,z:-1};
     // const dest={x:2,y:2,z:2};
     // const dir=normalize(sub(dest,orgin));

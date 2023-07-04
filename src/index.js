@@ -219,18 +219,19 @@ function createBox(box_num, sunposs) {
       if(x===0) debugRay(geometry,modelmatrix,500);
 
       // store box info
+      const rotation=Matrix4.getRotation(localmatrix,new Matrix4());
       const box_x = new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix, box_axis_x, box_x);
-      Cartesian3.normalize(box_x,box_x);
-      Cartesian3.multiplyByScalar(box_x,long*0.5,box_x);
+      Matrix4.multiplyByPoint(rotation, box_axis_x, box_x);
+      // Cartesian3.normalize(box_x,box_x);
+      // Cartesian3.multiplyByScalar(box_x,long*0.5,box_x);
       const box_y = new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix, box_axis_y, box_y);
-      Cartesian3.normalize(box_y,box_y);
-      Cartesian3.multiplyByScalar(box_y,width*0.5,box_y);
+      Matrix4.multiplyByPoint(rotation, box_axis_y, box_y);
+      // Cartesian3.normalize(box_y,box_y);
+      // Cartesian3.multiplyByScalar(box_y,width*0.5,box_y);
       const box_z = new Cartesian3();
-      Matrix4.multiplyByPoint(localmatrix, box_axis_z, box_z);
-      Cartesian3.normalize(box_z,box_z);
-      Cartesian3.multiplyByScalar(box_z,height*0.5,box_z);
+      Matrix4.multiplyByPoint(rotation, box_axis_z, box_z);
+      // Cartesian3.normalize(box_z,box_z);
+      // Cartesian3.multiplyByScalar(box_z,height*0.5,box_z);
       boxinfos.push(
         cur_pos,
         box_x,
@@ -424,7 +425,7 @@ void main()
 function debugRay(geometry,modelmatrix,dist){
   const value=geometry.attributes.position.values;
   for(let i=0;i<value.length;i+=3){
-    if(value[i+2]<0) continue;
+    if(value[i+2]>0) continue;
     if(value[i]<0) continue;
     if(value[i+1]<0) continue;
     const origin=new Cartesian3();
