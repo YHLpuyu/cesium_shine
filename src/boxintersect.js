@@ -50,6 +50,21 @@ function createPlaneSet(center,axis,normal)
   }
 }
 
+function intersect_PlaneSet(plantset,origin,dir){
+  const no=dot(plantset.normal,origin);
+  const nr=dot(plantset.normal,dir);
+  let t_near=(plantset.dnear-no)/nr;
+  let t_far=(plantset.dfar-no)/nr;
+  if(nr<0){
+    let temp=t_near;
+    t_near=t_far;
+    t_far=temp;
+  }
+  return {
+    near:t_near,
+    far:t_far
+  }
+}
 
 function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
 {
@@ -63,40 +78,40 @@ function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
   const y_plantset=createPlaneSet(center,axisy,y_nor);
   const z_plantset=createPlaneSet(center,axisz,z_nor);
 
-  const x_no=dot(x_nor,pos);
-  const y_no=dot(y_nor,pos);
-  const z_no=dot(z_nor,pos);
-
   let near=FLT_MIN;
   let far=FLT_MAX;
+
+  const xlxs=intersect_PlaneSet(x_plantset,pos,dir);
+  const ylxs=intersect_PlaneSet(y_plantset,pos,dir);
+  const zlxs=intersect_PlaneSet(z_plantset,pos,dir);
 
   const x_nr=dot(x_nor,dir);
   const y_nr=dot(y_nor,dir);
   const z_nr=dot(z_nor,dir);
 
-  if(x_nr!=0.){
-    let x_tnear=(x_plantset.dnear-x_no)/x_nr;
-    let x_tfar=(x_plantset.dfar-x_no)/x_nr;
-    if(x_nr<0.) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
-    near=Math.max(near,x_tnear);
-    far=Math.min(far,x_tfar);
-  }
+  // if(x_nr!=0.){
+  //   let x_tnear=(x_plantset.dnear-x_no)/x_nr;
+  //   let x_tfar=(x_plantset.dfar-x_no)/x_nr;
+  //   if(x_nr<0.) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
+  //   near=Math.max(near,x_tnear);
+  //   far=Math.min(far,x_tfar);
+  // }
 
-  if(y_nr!=0.){
-    let y_tnear=(y_plantset.dnear-y_no)/y_nr;
-    let y_tfar=(x_plantset.dfar-y_no)/y_nr;
-    if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
-    near=Math.max(near,y_tnear);
-    far=Math.min(far,y_tfar);
-  }
+  // if(y_nr!=0.){
+  //   let y_tnear=(y_plantset.dnear-y_no)/y_nr;
+  //   let y_tfar=(y_plantset.dfar-y_no)/y_nr;
+  //   if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
+  //   near=Math.max(near,y_tnear);
+  //   far=Math.min(far,y_tfar);
+  // }
 
-  if(z_nr!=0.){
-    let z_tnear=(z_plantset.dnear-z_no)/z_nr;
-    let z_tfar=(z_plantset.dfar-z_no)/z_nr;
-    if(z_nr<0.) {temp_lxs=z_tnear;z_tnear=z_tfar;z_tfar=temp_lxs;}
-    near=Math.max(near,z_tnear);
-    far=Math.min(far,z_tfar);
-  }
+  // if(z_nr!=0.){
+  //   let z_tnear=(z_plantset.dnear-z_no)/z_nr;
+  //   let z_tfar=(z_plantset.dfar-z_no)/z_nr;
+  //   if(z_nr<0.) {temp_lxs=z_tnear;z_tnear=z_tfar;z_tfar=temp_lxs;}
+  //   near=Math.max(near,z_tnear);
+  //   far=Math.min(far,z_tfar);
+  // }
 
   intersectcount+=far>near?1:0;
 
@@ -120,7 +135,7 @@ function boxintersect()
     const axisy= {x: -6.495517776628589, y: 12.990250155094142, z: -6.494732378465549};
     const axisz= {x: 25.00075574592734, y: 0, z: 0};
 
-    console.log(sub(center,orgin))
+    console.log("should intersect")
     // const orgin={x:-1,y:-1,z:-1};
     // const dest={x:2,y:2,z:2};
     // const dir=normalize(sub(dest,orgin));

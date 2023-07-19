@@ -219,7 +219,7 @@ function createBox(box_num, sunposs) {
       if(x===0) debugRay(geometry,modelmatrix,500);
 
       // store box info
-      const rotation=Matrix4.getRotation(localmatrix,new Matrix4());
+      const rotation=Matrix4.getRotation(modelmatrix,new Matrix4());
       const box_x = new Cartesian3();
       Matrix4.multiplyByPoint(rotation, box_axis_x, box_x);
       // Cartesian3.normalize(box_x,box_x);
@@ -238,6 +238,9 @@ function createBox(box_num, sunposs) {
         box_y,
         box_z
       );
+
+      cur_pos.z+=50;
+      drawAxisOFBox(cur_pos,box_x,box_y,box_z);
       boxid++;
     }
   }
@@ -417,7 +420,7 @@ void main()
   });
   primitive.appearance.material = material;
 
-  console.log(boxinfos);
+  console.log("lxs boxs:",boxinfos);
 
   return primitive;
 }
@@ -436,8 +439,8 @@ function debugRay(geometry,modelmatrix,dist){
     dest.y=origin.y+sunposs[0].y*dist;
     dest.z=origin.z+sunposs[0].z*dist;
 
-    console.log(origin);
-    console.log(dest);
+    console.log("lxs origin",origin);
+    console.log("lxs dest",dest);
 
     viewer.entities.add({
       polyline:{
@@ -447,4 +450,37 @@ function debugRay(geometry,modelmatrix,dist){
       }
     });
   }
+}
+
+function drawAxisOFBox(center,x,y,z){
+  // x axis
+  viewer.entities.add({
+    polyline:{
+      positions:[
+        center,
+        Cartesian3.add(center,Cartesian3.multiplyByScalar(x,2,new Cartesian3()),new Cartesian3())],
+      material:Color.RED,
+      width:2
+    }
+  });
+
+  viewer.entities.add({
+    polyline:{
+      positions:[
+        center,
+        Cartesian3.add(center,Cartesian3.multiplyByScalar(y,2,new Cartesian3()),new Cartesian3())],
+      material:Color.GREEN,
+      width:2
+    }
+  });
+
+  viewer.entities.add({
+    polyline:{
+      positions:[
+        center,
+        Cartesian3.add(center,Cartesian3.multiplyByScalar(z,2,new Cartesian3()),new Cartesian3())],
+      material:Color.BLUE,
+      width:2
+    }
+  })
 }
