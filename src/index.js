@@ -36,6 +36,16 @@ import { ComputeSunPos } from "./SunHelper";
 import { createTangentPlane } from "./lxshelper";
 import { boxintersect } from "./boxintersect";
 
+const center = Cartesian3.fromDegrees(120, 20.0);
+const transform = Transforms.eastNorthUpToFixedFrame(center);
+const rotation=Matrix4.getRotation(transform,new Matrix3());
+const axisx=new Cartesian3(1,0,0);
+const axisx_lxs=Matrix3.multiplyByVector(rotation,axisx,new Cartesian3());
+const axisy=new Cartesian3(0,1,0);
+const axisy_lxs=Matrix3.multiplyByVector(rotation,axisy,new Cartesian3());
+const anglexy=Cartesian3.angleBetween(axisx_lxs, axisy_lxs);
+console.log(axisx_lxs);
+
 boxintersect();
 // Your access token can be found at: https://cesium.com/ion/tokens.
 // This is the default access token
@@ -127,9 +137,9 @@ gui.add(suninitpos, "x").onChange(v => {
 
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
 
-const box_axis_x = new Cartesian3(40, 0, 0);
-const box_axis_y = new Cartesian3(0, 15, 0);
-const box_axis_z = new Cartesian3(0, 0, 50);
+const box_axis_x = new Cartesian3(80, 0, 0);
+const box_axis_y = new Cartesian3(0, 30, 0);
+const box_axis_z = new Cartesian3(0, 0, 100);
 
 scene.primitives.add(createBox(2, sunposs));
 
@@ -219,19 +229,21 @@ function createBox(box_num, sunposs) {
       if(x===0) debugRay(geometry,modelmatrix,500);
 
       // store box info
-      const rotation=Matrix4.getRotation(modelmatrix,new Matrix4());
-      const box_x = new Cartesian3();
-      Matrix4.multiplyByPoint(rotation, box_axis_x, box_x);
-      // Cartesian3.normalize(box_x,box_x);
-      // Cartesian3.multiplyByScalar(box_x,long*0.5,box_x);
+      const rotation=Matrix4.getRotation(localmatrix,new Matrix3());
+      const box_x = new Cartesian3(1,0,0);
+      Matrix3.multiplyByVector(rotation,box_axis_x,box_x);
       const box_y = new Cartesian3();
-      Matrix4.multiplyByPoint(rotation, box_axis_y, box_y);
-      // Cartesian3.normalize(box_y,box_y);
-      // Cartesian3.multiplyByScalar(box_y,width*0.5,box_y);
+      Matrix3.multiplyByVector(rotation,box_axis_y,box_y);
       const box_z = new Cartesian3();
-      Matrix4.multiplyByPoint(rotation, box_axis_z, box_z);
-      // Cartesian3.normalize(box_z,box_z);
-      // Cartesian3.multiplyByScalar(box_z,height*0.5,box_z);
+      Matrix3.multiplyByVector(rotation,box_axis_z,box_z);
+
+      const angle_xy=Cartesian3.angleBetween(box_x,box_y);
+      const angle_xz=Cartesian3.angleBetween(box_x,box_z);
+      const angle_yz=Cartesian3.angleBetween(box_y,box_z);
+
+      console.log(Math.PI/2);
+      console.log(angle_xy,angle_xz,angle_yz);
+      
       boxinfos.push(
         cur_pos,
         box_x,
