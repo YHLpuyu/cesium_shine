@@ -53,6 +53,7 @@ function createPlaneSet(center,axis,normal)
 function intersect_PlaneSet(plantset,origin,dir){
   const no=dot(plantset.normal,origin);
   const nr=dot(plantset.normal,dir);
+  
   let t_near=(plantset.dnear-no)/nr;
   let t_far=(plantset.dfar-no)/nr;
   if(nr<0){
@@ -85,6 +86,11 @@ function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
   const ylxs=intersect_PlaneSet(y_plantset,pos,dir);
   const zlxs=intersect_PlaneSet(z_plantset,pos,dir);
 
+  const tnear=Math.max(xlxs.near,ylxs.near,zlxs.near);
+  const tfar=Math.min(xlxs.far,ylxs.far,zlxs.far);
+  console.log("lxs near: ",tnear);
+  console.log("lxs far: ",tfar);
+
   const x_nr=dot(x_nor,dir);
   const y_nr=dot(y_nor,dir);
   const z_nr=dot(z_nor,dir);
@@ -113,7 +119,7 @@ function boxIntersect_lxs(pos,dir,center,axisx,axisy,axisz)
   //   far=Math.min(far,z_tfar);
   // }
 
-  intersectcount+=far>near?1:0;
+  intersectcount+=tfar>tnear?1:0;
 
   return intersectcount;
 }
@@ -132,8 +138,8 @@ function boxintersect()
 
     const center={x:-2763933.4869667836,y: 4787659.169418869,z:3170469.7359385183};
     const axisx= {x: -34.64171426197369, y: -19.998790788239386, z: 0};
-    const axisy= {x: -6.495517776628589, y: 12.990250155094142, z: -6.494732378465549};
-    const axisz= {x: 25.00075574592734, y: 0, z: 0};
+    const axisy= {x: 3.749886627830059, y: -6.495517776628589, z: 12.990250155094142};
+    const axisz= {x: -21.649107928218495, y: 37.50037783869421, z: 25.00075574592734};
 
     console.log("should intersect")
     // const orgin={x:-1,y:-1,z:-1};

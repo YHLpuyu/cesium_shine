@@ -1,30 +1,19 @@
 import {
-  Ion, Viewer, createWorldTerrain,
+  Ion, Viewer,
   BoxGeometry,
   Cartesian3,
   VertexFormat,
   GeometryInstance,
   Matrix4,
   Transforms,
-  ColorGeometryInstanceAttribute,
   Color,
   Primitive,
-  PerInstanceColorAppearance,
-  Interval,
-  ShadowMode,
   JulianDate,
-  Appearance,
   Material,
-  EllipsoidSurfaceAppearance,
   MaterialAppearance,
-  Simon1994PlanetaryPositions,
-  Ray,
-  Cartographic,
   Plane,
-  Cartesian2,
   CallbackProperty,
   Matrix3,
-  GeometryInstanceAttribute,
   ComponentDatatype,
   GeometryAttribute,
 } from "cesium";
@@ -33,20 +22,8 @@ import "../src/css/main.css"
 import GUI from "lil-gui";
 
 import { ComputeSunPos } from "./SunHelper";
-import { createTangentPlane } from "./lxshelper";
 import { boxintersect } from "./boxintersect";
 
-const center = Cartesian3.fromDegrees(120, 20.0);
-const transform = Transforms.eastNorthUpToFixedFrame(center);
-const rotation=Matrix4.getRotation(transform,new Matrix3());
-const axisx=new Cartesian3(1,0,0);
-const axisx_lxs=Matrix3.multiplyByVector(rotation,axisx,new Cartesian3());
-const axisy=new Cartesian3(0,1,0);
-const axisy_lxs=Matrix3.multiplyByVector(rotation,axisy,new Cartesian3());
-const anglexy=Cartesian3.angleBetween(axisx_lxs, axisy_lxs);
-console.log(axisx_lxs);
-
-boxintersect();
 // Your access token can be found at: https://cesium.com/ion/tokens.
 // This is the default access token
 Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YWU3ZjI2YS03MTVlLTRlOTItOWRmZC0xYTJiMTRiYTc0MDAiLCJpZCI6MzY2NzcsImlhdCI6MTYzMTg1NTMwNH0.20xeGHU5b77CmOUM7bxXdB_gkGfdkCyNAI7T14cEME8';
@@ -54,11 +31,9 @@ Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YWU3Z
 const gui = new GUI();
 
 // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
-const viewer = new Viewer('cesiumContainer', {
-  // terrainProvider: createWorldTerrain()
-});
+const viewer = new Viewer('cesiumContainer', {});
 viewer.scene.globe.enableLighting = true;
-viewer.shadows = true
+viewer.shadows = true;
 const scene = viewer.scene;
 
 const suninitpos = Cartesian3.fromDegrees(120, 30, 200);
@@ -110,7 +85,7 @@ for (let i = 0; i < hours; i++) {
 
 var polyline = viewer.entities.add({
   polyline: {
-    //使用cesium的peoperty
+    //使用cesium的property
     positions: new CallbackProperty(function () {
       return lxs.positions
     }, false),
@@ -137,9 +112,9 @@ gui.add(suninitpos, "x").onChange(v => {
 
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
 
-const box_axis_x = new Cartesian3(80, 0, 0);
-const box_axis_y = new Cartesian3(0, 30, 0);
-const box_axis_z = new Cartesian3(0, 0, 100);
+const box_axis_x = new Cartesian3(40, 0, 0);
+const box_axis_y = new Cartesian3(0, 15, 0);
+const box_axis_z = new Cartesian3(0, 0, 50);
 
 scene.primitives.add(createBox(2, sunposs));
 
@@ -260,7 +235,6 @@ function createBox(box_num, sunposs) {
   const material = new Material({
     translucent: false,
     fabric: {
-
       uniforms: {
         lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
         boxs: { type: `vec3[${boxinfos.length}]`, value: boxinfos },
@@ -300,7 +274,6 @@ lxs_planeset createPlaneSet(vec3 center,vec3 axis,vec3 normal)
 
 int boxIntersect_lxs(int sunidx,int boxuniformidx,vec3 pos)
 {
-  int intersectcount=0;
   float temp_lxs=0.;
   vec3 x_nor=normalize(boxs_1[boxuniformidx+1]);
   vec3 y_nor=normalize(boxs_1[boxuniformidx+2]);
@@ -331,7 +304,7 @@ int boxIntersect_lxs(int sunidx,int boxuniformidx,vec3 pos)
 
   if(y_nr!=0.){
     float y_tnear=(y_plantset.dnear-y_no)/y_nr;
-    float y_tfar=(x_plantset.dfar-y_no)/y_nr;
+    float y_tfar=(y_plantset.dfar-y_no)/y_nr;
     if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
     near=max(near,y_tnear);
     far=min(far,y_tfar);
@@ -345,9 +318,7 @@ int boxIntersect_lxs(int sunidx,int boxuniformidx,vec3 pos)
     far=min(far,z_tfar);
   }
 
-  intersectcount+=far>near?1:0;
-
-  return intersectcount;
+  return far>near?1:0;
 }
 
 //is the point illuminate by sun
@@ -417,7 +388,7 @@ void main()
 {
     vec4 p = czm_computePosition();
 
-    v_positionMC = position3DHigh + position3DLow;           // position in model coordinates
+    v_positionMC = p.xyz/p.w;           // position in model coordinates
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
     v_st = st;
     v_normal=czm_octDecode(compressedAttributes);
