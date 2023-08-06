@@ -138,19 +138,6 @@ const box_axis_y = new Cartesian3(0, 40, 0);
 const box_axis_z = new Cartesian3(0, 0, 50);
 
 scene.primitives.add(createBox(2, sunposs));
-scene.primitives.add(createRefBox(surfacepos));
-scene.preRender.addEventListener(function (s, t) {
-  // let sunpos = ComputeSunPos(viewer.clockViewModel.currentTime);
-  // console.log(viewer.clockViewModel.currentTime);
-  // let dir=new Cartesian3();
-  // Cartesian3.subtract(sunpos,blueBox.position._value,dir);
-  // Cartesian3.normalize(dir,dir);
-
-  // const r=new Ray(blueBox.position._value,dir);
-
-  // sunBox.position.setValue(Ray.getPoint(r,200));
-
-});
 
 viewer.camera.flyTo({
   destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
@@ -160,31 +147,6 @@ viewer.camera.flyTo({
     roll: 0.0
   }
 });
-
-const dir = new Cartesian3();
-const dis = new Cartesian3;
-scene.preRender.addEventListener((s, t) => {
-  let sunpos = ComputeSunPos(
-    viewer.clockViewModel.currentTime
-  );
-  // lxs.dist = Plane.getPointDistance(tgplane, sunpos);
-  Cartesian3.subtract(sunpos, suninitpos, dir);
-  Cartesian3.normalize(dir, dir);
-  Cartesian3.multiplyByScalar(dir, 300, dis);
-  Cartesian3.add(suninitpos, dis, lxs.positions[1]);
-  // console.log(plane_dist);
-  // Cartesian3.multiplyByScalar(sundir,100,sundir);
-  // Cartesian3.normalize(sunpos,sunpos);
-  // // console.log(sunpos);
-  // Cartesian3.multiplyByScalar(sunpos,100,sunpos);
-
-  // const sunpos =new Cartesian3();
-  // Cartesian3.add(suninitpos,sunpos,sunpos);
-  // blueBox.position.setValue(sunpos);
-  // 需要知道什么时候天黑
-})
-
-
 
 function createBox(box_num, sunposs) {
   const long = 30, width = 80, height = 100;
@@ -198,12 +160,10 @@ function createBox(box_num, sunposs) {
   const boxaxies = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
   let boxid = 0;
-  // let local_south=null;
   for (let x = 0; x < grid_res; x++) {
-    for (let y = 0; y < grid_res; y++) {
+    for (let y = 0; y < grid_res-1; y++) {
       const cur_pos = Cartesian3.fromDegrees(
         LNG + (y - 2 * x) * INTERVAL, LAT + x * INTERVAL
-        // LNG,LAT
       );
       const localmatrix = Transforms.eastNorthUpToFixedFrame(cur_pos);
       const modelmatrix = Matrix4.multiplyByTranslation(
