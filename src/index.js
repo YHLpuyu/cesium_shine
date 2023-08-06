@@ -223,12 +223,9 @@ function createBox(box_num, sunposs) {
         modelMatrix: modelmatrix,
       });
       inses.push(ins);
-
-      // if(x===0) debugRay(geometry,modelmatrix,500);
       const boxcenter = Matrix4.multiplyByPoint(modelmatrix, new Cartesian3(), new Cartesian3());
-      // store box info
       const rotation = Matrix4.getRotation(localmatrix, new Matrix3());
-      const box_x = new Cartesian3(1, 0, 0);
+      const box_x = new Cartesian3();
       Matrix3.multiplyByVector(rotation, box_axis_x, box_x);
       const box_y = new Cartesian3();
       Matrix3.multiplyByVector(rotation, box_axis_y, box_y);
@@ -242,18 +239,12 @@ function createBox(box_num, sunposs) {
       console.log(Math.PI / 2);
       console.log(angle_xy, angle_xz, angle_yz);
       const encodeCenter = EncodedCartesian3.fromCartesian(boxcenter, new EncodedCartesian3());
-      // cur_pos.z+=50;
       boxcenters.push(
         encodeCenter.high,
         encodeCenter.low
       );
 
       boxaxies.push(box_x, box_y, box_z);
-
-      drawNormal(boxcenter, box_x, box_y, box_z);
-
-      cur_pos.z += 50;
-      // drawAxisOFBox(boxcenter, box_x, box_y, box_z);
       boxid++;
     }
   }
@@ -307,12 +298,10 @@ bool intersect_PlaneSet(lxs_planeset planeset,vec3 origin,vec3 dir,out float int
   float no=dot(planeset.normal,origin);
   float nr=dot(planeset.normal,dir);
 
-  // 平行，必不相交
   if(nr==0.0) return false;
 
   intersect_near=(planeset.dnear-no)/nr;
   intersect_far=(planeset.dfar-no)/nr;
-  // 法向和射线反向，交换near,far
   if(nr<0.){
     float temp=intersect_near;
     intersect_near=intersect_far;
@@ -361,7 +350,6 @@ int boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3
   return intersectcount;
 }
 
-//is the point illuminate by sun
 int sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
   int intersect=0;
   for(int i=0;i<boxcount;i++){
@@ -393,26 +381,18 @@ void main()
   czm_material material = czm_getDefaultMaterial(materialInput);
   material.diffuse = color.rgb;
   material.alpha = color.a;
-
-  // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
     
   int suncount=lxs_0.length();
   int boxuniform_count=boxcenters_1.length()/2;
   int shinecount=0;
   vec3 pos=v_positionHigh+v_positionLow;
   for(int i=0;i<suncount;i++){
-    //如果法线和太阳方向反向
     float lxs_dis=dot(v_normal,lxs_0[i]);
     if(lxs_dis<0.001) continue;
     shinecount+=sunshine(i,pos,boxuniform_count,int(v_boxid));
   }
 
-  // show model coordinate
-  // vec3 nor_mc=(v_positionMC+vec3(15.,40.,50.))/vec3(30.,80.,100.);
-
   color=vec4(float(shinecount),0.,0.,1.);
-  float lxs=dot(v_normal,lxs_0[0]);
-  // color=vec3(lxs,0.,0.);
   out_FragColor=color;
 }
 `,
@@ -436,8 +416,8 @@ void main()
 {
     vec4 p = czm_computePosition();
 
-    v_positionMC = p.xyz;           // position in model coordinates
-    v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
+    v_positionMC = p.xyz;
+    v_positionEC = (czm_modelViewRelativeToEye * p).xyz;
     vec3 normal=czm_octDecode(compressedAttributes);
     v_normalEC=czm_normal*normal;
     v_boxid=boxid;
@@ -450,7 +430,6 @@ void main()
 }
 `
     }),
-    // shadows: ShadowMode.ENABLED
   });
   primitive.appearance.material = material;
 
@@ -522,9 +501,6 @@ function drawNormal(boxcenter, axisx, axisy, axisz) {
 function debugRay(geometry, modelmatrix, dist) {
   const value = geometry.attributes.position.values;
   for (let i = 0; i < value.length; i += 3) {
-    // if(value[i]<0) continue;
-    // if(value[i+1]<0) continue;
-    // if(value[i+2]>0) continue;
     const origin = new Cartesian3();
     Matrix4.multiplyByPoint(modelmatrix,
       new Cartesian3(value[i], value[i + 1], value[i + 2]), origin);
@@ -532,10 +508,6 @@ function debugRay(geometry, modelmatrix, dist) {
     dest.x = origin.x + sunposs[0].x * dist;
     dest.y = origin.y + sunposs[0].y * dist;
     dest.z = origin.z + sunposs[0].z * dist;
-
-    // console.log("lxs origin",origin);
-    // console.log("lxs dest",dest);
-
     viewer.entities.add({
       polyline: {
         positions: [origin, dest],
@@ -547,7 +519,6 @@ function debugRay(geometry, modelmatrix, dist) {
 }
 
 function drawAxisOFBox(center, x, y, z) {
-  // x axis
   viewer.entities.add({
     polyline: {
       positions: [
