@@ -200,13 +200,17 @@ function boxintersect(viewer,gui) {
     3170389.094367486
   ]
 
+  const pos={x:-2764214.7259664666, y: 4787597.590669659, z: 3170395.559223494};
+
   const dir = { x: 0.7915001315420431, y: 0.46914636397626086, z: 0.3917004352011649 };
 
   const center = {x: -2764149.9702815115, y: 4787648.188267582, z: 3170398.7353836372 };
   const axisx = { x: -12.99038105676658, y: -7.499999999999998, z: 0};
   const axisy = { x: 9.999999999999996, y: -17.32050807568877, z: 34.64101615137755};
   const axisz = { x: -21.650635094610966, y: 37.50000000000001, z: 24.999999999999996};
+  const lxss = boxIntersect_lxs(pos, dir, center, axisx, axisy, axisz);
 
+  console.log("lxs ",lxss);
   console.log("should intersect")
   // const orgin={x:-1,y:-1,z:-1};
   // const dest={x:2,y:2,z:2};

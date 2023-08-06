@@ -27,6 +27,7 @@ import {
   GeometryInstanceAttribute,
   ComponentDatatype,
   GeometryAttribute,
+  ScreenSpaceEventType,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import "../src/css/main.css"
@@ -148,6 +149,14 @@ viewer.camera.flyTo({
   }
 });
 
+viewer.screenSpaceEventHandler.setInputAction(function onLeftClick(
+  movement
+) {
+  const lxs_pos=scene.pickPosition(movement.position);
+  console.log(lxs_pos);  
+},
+ScreenSpaceEventType.LEFT_CLICK);
+
 function createBox(box_num, sunposs) {
   const long = 30, width = 80, height = 100;
   const box_geom = BoxGeometry.fromDimensions({
@@ -160,10 +169,10 @@ function createBox(box_num, sunposs) {
   const boxaxies = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
   let boxid = 0;
-  for (let x = 0; x < grid_res; x++) {
-    for (let y = 0; y < grid_res-1; y++) {
+  for (let x = 0; x < grid_res-1; x++) {
+    for (let y = 0; y < grid_res; y++) {
       const cur_pos = Cartesian3.fromDegrees(
-        LNG + (y - 2 * x) * INTERVAL, LAT + x * INTERVAL
+        LNG + y * INTERVAL, LAT + x * INTERVAL
       );
       const localmatrix = Transforms.eastNorthUpToFixedFrame(cur_pos);
       const modelmatrix = Matrix4.multiplyByTranslation(
@@ -192,12 +201,8 @@ function createBox(box_num, sunposs) {
       const box_z = new Cartesian3();
       Matrix3.multiplyByVector(rotation, box_axis_z, box_z);
 
-      const angle_xy = Cartesian3.angleBetween(box_x, box_y);
-      const angle_xz = Cartesian3.angleBetween(box_x, box_z);
-      const angle_yz = Cartesian3.angleBetween(box_y, box_z);
+      console.log(boxcenter);
 
-      console.log(Math.PI / 2);
-      console.log(angle_xy, angle_xz, angle_yz);
       const encodeCenter = EncodedCartesian3.fromCartesian(boxcenter, new EncodedCartesian3());
       boxcenters.push(
         encodeCenter.high,
@@ -208,6 +213,8 @@ function createBox(box_num, sunposs) {
       boxid++;
     }
   }
+
+  console.log(boxaxies);
 
   const material = new Material({
     translucent: false,
@@ -270,7 +277,7 @@ bool intersect_PlaneSet(lxs_planeset planeset,vec3 origin,vec3 dir,out float int
   return true;
 }
 
-int boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3 axisz)
+vec2 boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3 axisz)
 {
   int intersectcount=0;
   float temp_lxs=0.;
@@ -304,14 +311,11 @@ int boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3
     far=min(far,tem_far);
     near=max(near,tem_near);
   }
-
-  intersectcount+=far>near && near>5. && far-near>1.?1:0;
-
-  return intersectcount;
+  return vec2(far,near);
 }
 
-int sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
-  int intersect=0;
+vec2 sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
+  vec2 lxs_ins=vec2(FLT_MAX,FLT_MIN);
   for(int i=0;i<boxcount;i++){
     if(i==boxidx) continue;
     vec3 boxcenter=boxcenters_1[i*2]+boxcenters_1[i*2+1];
@@ -319,9 +323,11 @@ int sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
     vec3 axisy=boxaxies_2[i*3+1];
     vec3 axisz=boxaxies_2[i*3+2];
     vec3 dir=lxs_0[sunidx];
-    intersect+=boxIntersect_lxs(pos,dir,boxcenter,axisx,axisy,axisz);
+    vec2 lxs=boxIntersect_lxs(pos,dir,boxcenter,axisx,axisy,axisz);
+    lxs_ins.x=min(lxs.x,lxs_ins.x);
+    lxs_ins.y=max(lxs.y,lxs_ins.y);
   }
-  return intersect>0?0:1;
+  return lxs_ins;
 }
 
 void main()
@@ -329,9 +335,6 @@ void main()
   vec3 positionToEyeEC = -v_positionEC;
 
   vec3 normalEC = normalize(v_normalEC);
-#ifdef FACE_FORWARD
-  normalEC = faceforward(normalEC, vec3(0.0, 0.0, 1.0), -normalEC);
-#endif
 
   vec4 color = czm_gammaCorrect(v_color);
 
@@ -346,16 +349,14 @@ void main()
   int boxuniform_count=boxcenters_1.length()/2;
   int shinecount=0;
   vec3 pos=v_positionHigh+v_positionLow;
-  for(int i=0;i<suncount;i++){
-    float lxs_dis=dot(v_normal,lxs_0[i]);
-    if(lxs_dis<0.001) continue;
-    shinecount+=sunshine(i,pos,boxuniform_count,int(v_boxid));
-  }
-
-  color=vec4(float(shinecount),0.,0.,1.);
+  vec3 dir=lxs_0[0];
+  // float lxs_dis=dot(v_normal,lxs_0[i]);
+  // if(lxs_dis<0.001) color=vec4(1.);
+  vec2 lxs=sunshine(0,pos,boxuniform_count,int(v_boxid));
+  // 噪声严重！！！
+  color=vec4(lxs.y/100.,0.,0.,1.);
   out_FragColor=color;
-}
-`,
+}`,
       vertexShaderSource: `in vec3 position3DHigh;
 in vec3 position3DLow;
 in float batchId;
