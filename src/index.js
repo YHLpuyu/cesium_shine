@@ -1,5 +1,5 @@
 import {
-  Ion, Viewer, createWorldTerrain,
+  Ion, Viewer, EncodedCartesian3,
   BoxGeometry,
   Cartesian3,
   VertexFormat,
@@ -35,18 +35,18 @@ import GUI from "lil-gui";
 import { ComputeSunPos } from "./SunHelper";
 import { createTangentPlane } from "./lxshelper";
 import { boxintersect } from "./boxintersect";
+import { createRefBox } from "./refbox";
 
 const center = Cartesian3.fromDegrees(120, 20.0);
 const transform = Transforms.eastNorthUpToFixedFrame(center);
-const rotation=Matrix4.getRotation(transform,new Matrix3());
-const axisx=new Cartesian3(1,0,0);
-const axisx_lxs=Matrix3.multiplyByVector(rotation,axisx,new Cartesian3());
-const axisy=new Cartesian3(0,1,0);
-const axisy_lxs=Matrix3.multiplyByVector(rotation,axisy,new Cartesian3());
-const anglexy=Cartesian3.angleBetween(axisx_lxs, axisy_lxs);
+const rotation = Matrix4.getRotation(transform, new Matrix3());
+const axisx = new Cartesian3(1, 0, 0);
+const axisx_lxs = Matrix3.multiplyByVector(rotation, axisx, new Cartesian3());
+const axisy = new Cartesian3(0, 1, 0);
+const axisy_lxs = Matrix3.multiplyByVector(rotation, axisy, new Cartesian3());
+const anglexy = Cartesian3.angleBetween(axisx_lxs, axisy_lxs);
 console.log(axisx_lxs);
 
-boxintersect();
 // Your access token can be found at: https://cesium.com/ion/tokens.
 // This is the default access token
 Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YWU3ZjI2YS03MTVlLTRlOTItOWRmZC0xYTJiMTRiYTc0MDAiLCJpZCI6MzY2NzcsImlhdCI6MTYzMTg1NTMwNH0.20xeGHU5b77CmOUM7bxXdB_gkGfdkCyNAI7T14cEME8';
@@ -57,6 +57,7 @@ const gui = new GUI();
 const viewer = new Viewer('cesiumContainer', {
   // terrainProvider: createWorldTerrain()
 });
+boxintersect(viewer, gui);
 viewer.scene.globe.enableLighting = true;
 viewer.shadows = true
 const scene = viewer.scene;
@@ -80,6 +81,7 @@ const ellipsoid = scene.globe.ellipsoid;
 const nor = ellipsoid.geodeticSurfaceNormal(surfacepos);
 const dist = Cartesian3.magnitude(surfacepos);
 const tgplane = new Plane(nor, dist);
+
 // const bluePlane = viewer.entities.add({
 //   name: "Blue plane",
 //   position: surfacepos,
@@ -91,7 +93,7 @@ const tgplane = new Plane(nor, dist);
 // });
 
 const startDate = JulianDate.fromDate(new Date("2023/07/02 18:00:00"));
-viewer.clockViewModel.currentTime=startDate;
+viewer.clockViewModel.currentTime = startDate;
 const hours = 1;
 const sunposs = [];
 for (let i = 0; i < hours; i++) {
@@ -129,20 +131,14 @@ const lxs = {
   ]
 };
 
-gui.add(lxs, "dist").listen();
-
-gui.add(suninitpos, "x").onChange(v => {
-  blueBox.position.setValue(suninitpos);
-})
-
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
 
-const box_axis_x = new Cartesian3(80, 0, 0);
-const box_axis_y = new Cartesian3(0, 30, 0);
-const box_axis_z = new Cartesian3(0, 0, 100);
+const box_axis_x = new Cartesian3(15, 0, 0);
+const box_axis_y = new Cartesian3(0, 40, 0);
+const box_axis_z = new Cartesian3(0, 0, 50);
 
 scene.primitives.add(createBox(2, sunposs));
-
+scene.primitives.add(createRefBox(surfacepos));
 scene.preRender.addEventListener(function (s, t) {
   // let sunpos = ComputeSunPos(viewer.clockViewModel.currentTime);
   // console.log(viewer.clockViewModel.currentTime);
@@ -191,33 +187,35 @@ scene.preRender.addEventListener((s, t) => {
 
 
 function createBox(box_num, sunposs) {
-  const long=80,width=30,height=100;
+  const long = 30, width = 80, height = 100;
   const box_geom = BoxGeometry.fromDimensions({
     vertexFormat: VertexFormat.POSITION_AND_NORMAL,
     dimensions: new Cartesian3(long, width, height)
   });
 
   const inses = [];
-  const boxinfos = [];
+  const boxcenters = [];
+  const boxaxies = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
   let boxid = 0;
   // let local_south=null;
   for (let x = 0; x < grid_res; x++) {
-    for (let y = 0; y < grid_res-1; y++) {
+    for (let y = 0; y < grid_res; y++) {
       const cur_pos = Cartesian3.fromDegrees(
-        LNG + (y-2*x) * INTERVAL, LAT + x * INTERVAL
+        LNG + (y - 2 * x) * INTERVAL, LAT + x * INTERVAL
         // LNG,LAT
       );
       const localmatrix = Transforms.eastNorthUpToFixedFrame(cur_pos);
       const modelmatrix = Matrix4.multiplyByTranslation(
         localmatrix, new Cartesian3(0, 0, 50), new Matrix4());
-      const geometry=BoxGeometry.createGeometry(box_geom);
-      const positionAttr=geometry.attributes.position;
-      const vertexCount=positionAttr.values.length/positionAttr.componentsPerAttribute;
-      geometry.attributes.boxid=new GeometryAttribute({
-        componentDatatype:ComponentDatatype.FLOAT,
-        componentsPerAttribute:1,
-        values:new Float32Array((new Array(vertexCount)).fill(boxid))
+
+      const geometry = BoxGeometry.createGeometry(box_geom);
+      const positionAttr = geometry.attributes.position;
+      const vertexCount = positionAttr.values.length / positionAttr.componentsPerAttribute;
+      geometry.attributes.boxid = new GeometryAttribute({
+        componentDatatype: ComponentDatatype.FLOAT,
+        componentsPerAttribute: 1,
+        values: new Float32Array((new Array(vertexCount)).fill(boxid))
       });
 
       const ins = new GeometryInstance({
@@ -226,33 +224,36 @@ function createBox(box_num, sunposs) {
       });
       inses.push(ins);
 
-      if(x===0) debugRay(geometry,modelmatrix,500);
-
+      // if(x===0) debugRay(geometry,modelmatrix,500);
+      const boxcenter = Matrix4.multiplyByPoint(modelmatrix, new Cartesian3(), new Cartesian3());
       // store box info
-      const rotation=Matrix4.getRotation(localmatrix,new Matrix3());
-      const box_x = new Cartesian3(1,0,0);
-      Matrix3.multiplyByVector(rotation,box_axis_x,box_x);
+      const rotation = Matrix4.getRotation(localmatrix, new Matrix3());
+      const box_x = new Cartesian3(1, 0, 0);
+      Matrix3.multiplyByVector(rotation, box_axis_x, box_x);
       const box_y = new Cartesian3();
-      Matrix3.multiplyByVector(rotation,box_axis_y,box_y);
+      Matrix3.multiplyByVector(rotation, box_axis_y, box_y);
       const box_z = new Cartesian3();
-      Matrix3.multiplyByVector(rotation,box_axis_z,box_z);
+      Matrix3.multiplyByVector(rotation, box_axis_z, box_z);
 
-      const angle_xy=Cartesian3.angleBetween(box_x,box_y);
-      const angle_xz=Cartesian3.angleBetween(box_x,box_z);
-      const angle_yz=Cartesian3.angleBetween(box_y,box_z);
+      const angle_xy = Cartesian3.angleBetween(box_x, box_y);
+      const angle_xz = Cartesian3.angleBetween(box_x, box_z);
+      const angle_yz = Cartesian3.angleBetween(box_y, box_z);
 
-      console.log(Math.PI/2);
-      console.log(angle_xy,angle_xz,angle_yz);
-      
-      boxinfos.push(
-        cur_pos,
-        box_x,
-        box_y,
-        box_z
+      console.log(Math.PI / 2);
+      console.log(angle_xy, angle_xz, angle_yz);
+      const encodeCenter = EncodedCartesian3.fromCartesian(boxcenter, new EncodedCartesian3());
+      // cur_pos.z+=50;
+      boxcenters.push(
+        encodeCenter.high,
+        encodeCenter.low
       );
 
-      cur_pos.z+=50;
-      drawAxisOFBox(cur_pos,box_x,box_y,box_z);
+      boxaxies.push(box_x, box_y, box_z);
+
+      drawNormal(boxcenter, box_x, box_y, box_z);
+
+      cur_pos.z += 50;
+      // drawAxisOFBox(boxcenter, box_x, box_y, box_z);
       boxid++;
     }
   }
@@ -260,10 +261,10 @@ function createBox(box_num, sunposs) {
   const material = new Material({
     translucent: false,
     fabric: {
-
       uniforms: {
         lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
-        boxs: { type: `vec3[${boxinfos.length}]`, value: boxinfos },
+        boxcenters: { type: `vec3[${boxcenters.length}]`, value: boxcenters },
+        boxaxies: { type: `vec3[${boxaxies.length}]`, value: boxaxies }
       }
     }
   });
@@ -273,13 +274,16 @@ function createBox(box_num, sunposs) {
     appearance: new MaterialAppearance({
       translucent: false,
       fragmentShaderSource: `#define FLT_MAX 3.402823466e+38
-#define FLT_MIN 1.175494351e-38
+#define FLT_MIN -3.402823466e+38
 
 in vec3 v_positionMC;
 in vec3 v_positionEC;
-in vec2 v_st;
-in vec3 v_normal;
+in vec3 v_normalEC;
 in float v_boxid;
+in vec4 v_color;
+in vec3 v_positionHigh;
+in vec3 v_positionLow;
+in vec3 v_normal;
 
 struct lxs_planeset
 {
@@ -298,132 +302,150 @@ lxs_planeset createPlaneSet(vec3 center,vec3 axis,vec3 normal)
   return lxs;
 }
 
-int boxIntersect_lxs(int sunidx,int boxuniformidx,vec3 pos)
+bool intersect_PlaneSet(lxs_planeset planeset,vec3 origin,vec3 dir,out float intersect_far,out float intersect_near)
+{
+  float no=dot(planeset.normal,origin);
+  float nr=dot(planeset.normal,dir);
+
+  // 平行，必不相交
+  if(nr==0.0) return false;
+
+  intersect_near=(planeset.dnear-no)/nr;
+  intersect_far=(planeset.dfar-no)/nr;
+  // 法向和射线反向，交换near,far
+  if(nr<0.){
+    float temp=intersect_near;
+    intersect_near=intersect_far;
+    intersect_far=temp;
+  }
+  return true;
+}
+
+int boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3 axisz)
 {
   int intersectcount=0;
   float temp_lxs=0.;
-  vec3 x_nor=normalize(boxs_1[boxuniformidx+1]);
-  vec3 y_nor=normalize(boxs_1[boxuniformidx+2]);
-  vec3 z_nor=normalize(boxs_1[boxuniformidx+3]);
+  vec3 x_nor=normalize(axisx);
+  vec3 y_nor=normalize(axisy);
+  vec3 z_nor=normalize(axisz);
 
-  lxs_planeset x_plantset=createPlaneSet(boxs_1[boxuniformidx],boxs_1[boxuniformidx+1],x_nor);
-  lxs_planeset y_plantset=createPlaneSet(boxs_1[boxuniformidx],boxs_1[boxuniformidx+2],y_nor);
-  lxs_planeset z_plantset=createPlaneSet(boxs_1[boxuniformidx],boxs_1[boxuniformidx+3],z_nor);
-
-  float x_no=dot(x_nor,pos);
-  float y_no=dot(y_nor,pos);
-  float z_no=dot(z_nor,pos);
+  lxs_planeset x_plantset=createPlaneSet(boxcenter,axisx,x_nor);
+  lxs_planeset y_plantset=createPlaneSet(boxcenter,axisy,y_nor);
+  lxs_planeset z_plantset=createPlaneSet(boxcenter,axisz,z_nor);
 
   float near=FLT_MIN;
   float far=FLT_MAX;
 
-  float x_nr=dot(x_nor,lxs_0[sunidx]);
-  float y_nr=dot(y_nor,lxs_0[sunidx]);
-  float z_nr=dot(z_nor,lxs_0[sunidx]);
+  float tem_near,tem_far;
 
-  if(x_nr!=0.){
-    float x_tnear=(x_plantset.dnear-x_no)/x_nr;
-    float x_tfar=(x_plantset.dfar-x_no)/x_nr;
-    if(x_nr<0.) {temp_lxs=x_tnear;x_tnear=x_tfar;x_tfar=temp_lxs;}
-    near=max(near,x_tnear);
-    far=min(far,x_tfar);
+  bool x_intersected=intersect_PlaneSet(x_plantset,pos,dir,tem_far,tem_near);
+  if(x_intersected){
+    far=min(far,tem_far);
+    near=max(near,tem_near);
   }
 
-  if(y_nr!=0.){
-    float y_tnear=(y_plantset.dnear-y_no)/y_nr;
-    float y_tfar=(x_plantset.dfar-y_no)/y_nr;
-    if(y_nr<0.) {temp_lxs=y_tnear;y_tnear=y_tfar;y_tfar=temp_lxs;}
-    near=max(near,y_tnear);
-    far=min(far,y_tfar);
+  bool y_intersected=intersect_PlaneSet(y_plantset,pos,dir,tem_far,tem_near);
+  if(y_intersected){
+    far=min(far,tem_far);
+    near=max(near,tem_near);
   }
 
-  if(z_nr!=0.){
-    float z_tnear=(z_plantset.dnear-z_no)/z_nr;
-    float z_tfar=(z_plantset.dfar-z_no)/z_nr;
-    if(z_nr<0.) {temp_lxs=z_tnear;z_tnear=z_tfar;z_tfar=temp_lxs;}
-    near=max(near,z_tnear);
-    far=min(far,z_tfar);
+  bool z_intersected=intersect_PlaneSet(z_plantset,pos,dir,tem_far,tem_near);
+  if(z_intersected){
+    far=min(far,tem_far);
+    near=max(near,tem_near);
   }
 
-  intersectcount+=far>near?1:0;
+  intersectcount+=far>near && near>5. && far-near>1.?1:0;
 
   return intersectcount;
 }
 
 //is the point illuminate by sun
-int sunshine(int sunidx,vec3 pos,int boxuniform_count,int boxidx){
+int sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
   int intersect=0;
-  int boxcount=boxs_1.length();
-  for(int i=0;i<boxuniform_count;i+=4){
-    if(i/4==boxidx) continue;
-    intersect+=boxIntersect_lxs(sunidx,i,pos);
+  for(int i=0;i<boxcount;i++){
+    if(i==boxidx) continue;
+    vec3 boxcenter=boxcenters_1[i*2]+boxcenters_1[i*2+1];
+    vec3 axisx=boxaxies_2[i*3];
+    vec3 axisy=boxaxies_2[i*3+1];
+    vec3 axisz=boxaxies_2[i*3+2];
+    vec3 dir=lxs_0[sunidx];
+    intersect+=boxIntersect_lxs(pos,dir,boxcenter,axisx,axisy,axisz);
   }
-  return intersect>0?1:0;
+  return intersect>0?0:1;
 }
 
 void main()
 {
-    czm_materialInput materialInput;
+  vec3 positionToEyeEC = -v_positionEC;
 
-    vec3 normalMC=czm_geodeticSurfaceNormal(v_positionMC, vec3(0.0), vec3(1.0));
-    vec3 normalEC = normalize(czm_normal3D * normalMC);
+  vec3 normalEC = normalize(v_normalEC);
 #ifdef FACE_FORWARD
-    normalEC = faceforward(normalEC, vec3(0.0, 0.0, 1.0), -normalEC);
+  normalEC = faceforward(normalEC, vec3(0.0, 0.0, 1.0), -normalEC);
 #endif
 
-    materialInput.s = v_st.s;
-    materialInput.st = v_st;
-    materialInput.str = vec3(v_st, 0.0);
+  vec4 color = czm_gammaCorrect(v_color);
 
-    // Convert tangent space material normal to eye space
-    materialInput.normalEC = normalEC;
-    materialInput.tangentToEyeMatrix = czm_eastNorthUpToEyeCoordinates(v_positionMC, materialInput.normalEC);
+  czm_materialInput materialInput;
+  materialInput.normalEC = normalEC;
+  materialInput.positionToEyeEC = positionToEyeEC;
+  czm_material material = czm_getDefaultMaterial(materialInput);
+  material.diffuse = color.rgb;
+  material.alpha = color.a;
 
-    // Convert view vector to world space
-    vec3 positionToEyeEC = -v_positionEC;
-    materialInput.positionToEyeEC = positionToEyeEC;
-
-    czm_material material = czm_getMaterial(materialInput);
+  // out_FragColor = czm_phong(normalize(positionToEyeEC), material, czm_lightDirectionEC);
     
-    int suncount=lxs_0.length();
-    int boxuniform_count=boxs_1.length();
-    int shinecount=0;
-    for(int i=0;i<suncount;i++){
-      shinecount+=sunshine(i,v_positionMC,boxuniform_count,int(v_boxid));
-    }
+  int suncount=lxs_0.length();
+  int boxuniform_count=boxcenters_1.length()/2;
+  int shinecount=0;
+  vec3 pos=v_positionHigh+v_positionLow;
+  for(int i=0;i<suncount;i++){
+    //如果法线和太阳方向反向
+    float lxs_dis=dot(v_normal,lxs_0[i]);
+    if(lxs_dis<0.001) continue;
+    shinecount+=sunshine(i,pos,boxuniform_count,int(v_boxid));
+  }
 
-    vec3 color=vec3(float(shinecount/suncount),0.,0.);
-    // float lxs=dot(v_normal,lxs_0[0]);
-    // color=vec3(lxs,0.,0.);
-    out_FragColor=vec4(color,1.);
+  // show model coordinate
+  // vec3 nor_mc=(v_positionMC+vec3(15.,40.,50.))/vec3(30.,80.,100.);
+
+  color=vec4(float(shinecount),0.,0.,1.);
+  float lxs=dot(v_normal,lxs_0[0]);
+  // color=vec3(lxs,0.,0.);
+  out_FragColor=color;
 }
 `,
       vertexShaderSource: `in vec3 position3DHigh;
 in vec3 position3DLow;
-in vec2 st;
 in float batchId;
 in float boxid;
-
-// uniform vec3 localsouth_2;
+in float compressedAttributes;
 
 out vec3 v_positionMC;
 out vec3 v_positionEC;
-out vec2 v_st;
-out vec3 v_normal;
+out vec3 v_normalEC;
 out float v_boxid;
+out vec4 v_color;
+out vec3 v_positionHigh;
+out vec3 v_positionLow;
+out vec3 v_normal;
 
 
 void main()
 {
     vec4 p = czm_computePosition();
 
-    v_positionMC = position3DHigh + position3DLow;           // position in model coordinates
+    v_positionMC = p.xyz;           // position in model coordinates
     v_positionEC = (czm_modelViewRelativeToEye * p).xyz;     // position in eye coordinates
-    v_st = st;
-    v_normal=czm_octDecode(compressedAttributes);
+    vec3 normal=czm_octDecode(compressedAttributes);
+    v_normalEC=czm_normal*normal;
     v_boxid=boxid;
-    // float dotnorm_south=dot(v_normal,localsouth_2);
-    // if(dotnorm_south<-.001)v_normal=vec3(0.);
+    v_color=vec4(p.w/2.);
+    v_positionHigh=position3DHigh;
+    v_positionLow=position3DLow;
+    v_normal=normal;
+
     gl_Position = czm_modelViewProjectionRelativeToEye * p;
 }
 `
@@ -432,67 +454,127 @@ void main()
   });
   primitive.appearance.material = material;
 
-  console.log("lxs boxs:",boxinfos);
-
   return primitive;
 }
 
-function debugRay(geometry,modelmatrix,dist){
-  const value=geometry.attributes.position.values;
-  for(let i=0;i<value.length;i+=3){
-    if(value[i+2]>0) continue;
-    if(value[i]<0) continue;
-    if(value[i+1]<0) continue;
-    const origin=new Cartesian3();
-    Matrix4.multiplyByPoint(modelmatrix,
-      new Cartesian3(value[i],value[i+1],value[i+2]),origin);
-    const dest=new Cartesian3();
-    dest.x=origin.x+sunposs[0].x*dist;
-    dest.y=origin.y+sunposs[0].y*dist;
-    dest.z=origin.z+sunposs[0].z*dist;
+function drawNormal(boxcenter, axisx, axisy, axisz) {
+  const x1 = Cartesian3.add(boxcenter, axisx, new Cartesian3());
+  const x1n = Cartesian3.add(x1, axisx, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [x1, x1n],
+      material: Color.RED,
+      width: 2
+    }
+  });
 
-    console.log("lxs origin",origin);
-    console.log("lxs dest",dest);
+  const y1 = Cartesian3.add(boxcenter, axisy, new Cartesian3());
+  const y1n = Cartesian3.add(y1, axisy, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [y1, y1n],
+      material: Color.GREEN,
+      width: 2
+    }
+  });
+
+  const z1 = Cartesian3.add(boxcenter, axisz, new Cartesian3());
+  const z1n = Cartesian3.add(z1, axisz, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [z1, z1n],
+      material: Color.BLUE,
+      width: 2
+    }
+  });
+
+  const x2 = Cartesian3.subtract(boxcenter, axisx, new Cartesian3());
+  const x2n = Cartesian3.subtract(x2, axisx, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [x2, x2n],
+      material: Color.RED,
+      width: 2
+    }
+  });
+
+  const y2 = Cartesian3.subtract(boxcenter, axisy, new Cartesian3());
+  const y2n = Cartesian3.subtract(y2, axisy, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [y2, y2n],
+      material: Color.GREEN,
+      width: 2
+    }
+  });
+
+  const z2 = Cartesian3.add(boxcenter, axisz, new Cartesian3());
+  const z2n = Cartesian3.add(z2, axisz, new Cartesian3());
+  viewer.entities.add({
+    polyline: {
+      positions: [z2, z2n],
+      material: Color.BLUE,
+      width: 2
+    }
+  });
+}
+
+function debugRay(geometry, modelmatrix, dist) {
+  const value = geometry.attributes.position.values;
+  for (let i = 0; i < value.length; i += 3) {
+    // if(value[i]<0) continue;
+    // if(value[i+1]<0) continue;
+    // if(value[i+2]>0) continue;
+    const origin = new Cartesian3();
+    Matrix4.multiplyByPoint(modelmatrix,
+      new Cartesian3(value[i], value[i + 1], value[i + 2]), origin);
+    const dest = new Cartesian3();
+    dest.x = origin.x + sunposs[0].x * dist;
+    dest.y = origin.y + sunposs[0].y * dist;
+    dest.z = origin.z + sunposs[0].z * dist;
+
+    // console.log("lxs origin",origin);
+    // console.log("lxs dest",dest);
 
     viewer.entities.add({
-      polyline:{
-        positions:[origin,dest],
-        material:Color.YELLOW,
-        width:2
+      polyline: {
+        positions: [origin, dest],
+        material: Color.YELLOW,
+        width: 2
       }
     });
   }
 }
 
-function drawAxisOFBox(center,x,y,z){
+function drawAxisOFBox(center, x, y, z) {
   // x axis
   viewer.entities.add({
-    polyline:{
-      positions:[
+    polyline: {
+      positions: [
         center,
-        Cartesian3.add(center,Cartesian3.multiplyByScalar(x,2,new Cartesian3()),new Cartesian3())],
-      material:Color.RED,
-      width:2
+        Cartesian3.add(center, Cartesian3.multiplyByScalar(x, 2, new Cartesian3()), new Cartesian3())],
+      material: Color.RED,
+      width: 2
     }
   });
 
   viewer.entities.add({
-    polyline:{
-      positions:[
+    polyline: {
+      positions: [
         center,
-        Cartesian3.add(center,Cartesian3.multiplyByScalar(y,2,new Cartesian3()),new Cartesian3())],
-      material:Color.GREEN,
-      width:2
+        Cartesian3.add(center, Cartesian3.multiplyByScalar(y, 2, new Cartesian3()), new Cartesian3())],
+      material: Color.GREEN,
+      width: 2
     }
   });
 
   viewer.entities.add({
-    polyline:{
-      positions:[
+    polyline: {
+      positions: [
         center,
-        Cartesian3.add(center,Cartesian3.multiplyByScalar(z,2,new Cartesian3()),new Cartesian3())],
-      material:Color.BLUE,
-      width:2
+        Cartesian3.add(center, Cartesian3.multiplyByScalar(z, 2, new Cartesian3()), new Cartesian3())],
+      material: Color.BLUE,
+      width: 2
     }
   })
 }
