@@ -6,14 +6,25 @@ import {
   GeometryInstance,
   Matrix4,
   Transforms,
+  ColorGeometryInstanceAttribute,
   Color,
   Primitive,
+  PerInstanceColorAppearance,
+  Interval,
+  ShadowMode,
   JulianDate,
+  Appearance,
   Material,
+  EllipsoidSurfaceAppearance,
   MaterialAppearance,
+  Simon1994PlanetaryPositions,
+  Ray,
+  Cartographic,
   Plane,
+  Cartesian2,
   CallbackProperty,
   Matrix3,
+  GeometryInstanceAttribute,
   ComponentDatatype,
   GeometryAttribute,
 } from "cesium";
@@ -22,6 +33,7 @@ import "../src/css/main.css"
 import GUI from "lil-gui";
 
 import { ComputeSunPos } from "./SunHelper";
+import { createTangentPlane } from "./lxshelper";
 import { boxintersect } from "./boxintersect";
 import { createRefBox } from "./refbox";
 
@@ -47,7 +59,7 @@ const viewer = new Viewer('cesiumContainer', {
 });
 boxintersect(viewer, gui);
 viewer.scene.globe.enableLighting = true;
-viewer.shadows = true;
+viewer.shadows = true
 const scene = viewer.scene;
 
 const suninitpos = Cartesian3.fromDegrees(120, 30, 200);
@@ -100,7 +112,7 @@ for (let i = 0; i < hours; i++) {
 
 var polyline = viewer.entities.add({
   polyline: {
-    //使用cesium的property
+    //使用cesium的peoperty
     positions: new CallbackProperty(function () {
       return lxs.positions
     }, false),
@@ -121,9 +133,9 @@ const lxs = {
 
 const LAT = 30, LNG = 120, INTERVAL = 0.001;
 
-const box_axis_x = new Cartesian3(80, 0, 0);
-const box_axis_y = new Cartesian3(0, 30, 0);
-const box_axis_z = new Cartesian3(0, 0, 100);
+const box_axis_x = new Cartesian3(15, 0, 0);
+const box_axis_y = new Cartesian3(0, 40, 0);
+const box_axis_z = new Cartesian3(0, 0, 50);
 
 scene.primitives.add(createBox(2, sunposs));
 scene.primitives.add(createRefBox(surfacepos));
@@ -311,6 +323,7 @@ bool intersect_PlaneSet(lxs_planeset planeset,vec3 origin,vec3 dir,out float int
 
 int boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec3 axisz)
 {
+  int intersectcount=0;
   float temp_lxs=0.;
   vec3 x_nor=normalize(axisx);
   vec3 y_nor=normalize(axisy);
