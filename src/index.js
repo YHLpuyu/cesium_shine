@@ -138,7 +138,7 @@ const box_axis_x = new Cartesian3(15, 0, 0);
 const box_axis_y = new Cartesian3(0, 40, 0);
 const box_axis_z = new Cartesian3(0, 0, 50);
 
-scene.primitives.add(createBox(2, sunposs));
+scene.primitives.add(createBox(20, sunposs));
 
 viewer.camera.flyTo({
   destination: new Cartesian3(-2764033.613852088, 4787666.170287514, 3171230.9780017845),
@@ -169,7 +169,7 @@ function createBox(box_num, sunposs) {
   const boxaxies = [];
   const grid_res = Math.ceil(Math.sqrt(box_num));
   let boxid = 0;
-  for (let x = 0; x < grid_res-1; x++) {
+  for (let x = 0; x < grid_res; x++) {
     for (let y = 0; y < grid_res; y++) {
       const cur_pos = Cartesian3.fromDegrees(
         LNG + y * INTERVAL, LAT + x * INTERVAL
@@ -222,7 +222,8 @@ function createBox(box_num, sunposs) {
       uniforms: {
         lxs: { type: `vec3[${sunposs.length}]`, value: sunposs },
         boxcenters: { type: `vec3[${boxcenters.length}]`, value: boxcenters },
-        boxaxies: { type: `vec3[${boxaxies.length}]`, value: boxaxies }
+        boxaxies: { type: `vec3[${boxaxies.length}]`, value: boxaxies },
+        rtc_lxs:new Cartesian3(-2764233.530084816, 4787599.944020384, 3170398.735383637)
       }
     }
   });
@@ -233,6 +234,7 @@ function createBox(box_num, sunposs) {
       translucent: false,
       fragmentShaderSource: `#define FLT_MAX 3.402823466e+38
 #define FLT_MIN -3.402823466e+38
+#define DIST_THRESHOLD=3.;
 
 in vec3 v_positionMC;
 in vec3 v_positionEC;
@@ -314,20 +316,27 @@ vec2 boxIntersect_lxs(vec3 pos,vec3 dir,vec3 boxcenter,vec3 axisx,vec3 axisy,vec
   return vec2(far,near);
 }
 
-vec2 sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
-  vec2 lxs_ins=vec2(FLT_MAX,FLT_MIN);
+// 一次光源下，空间位置同立方体相交的次数
+float sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
+  float intersectCount=0.;
+
   for(int i=0;i<boxcount;i++){
-    if(i==boxidx) continue;
-    vec3 boxcenter=boxcenters_1[i*2]+boxcenters_1[i*2+1];
+    // if(i==boxidx) continue;
+
+    vec3 boxcenter=boxcenters_1[i*2]+boxcenters_1[i*2+1]-rtc_lxs_3;
     vec3 axisx=boxaxies_2[i*3];
     vec3 axisy=boxaxies_2[i*3+1];
     vec3 axisz=boxaxies_2[i*3+2];
     vec3 dir=lxs_0[sunidx];
-    vec2 lxs=boxIntersect_lxs(pos,dir,boxcenter,axisx,axisy,axisz);
-    lxs_ins.x=min(lxs.x,lxs_ins.x);
-    lxs_ins.y=max(lxs.y,lxs_ins.y);
+    vec3 lxs_pos=pos-rtc_lxs_3;
+
+    //lxs
+    vec2 lxs=boxIntersect_lxs(lxs_pos,dir,boxcenter,axisx,axisy,axisz);
+    float enough_dist=step(3.,lxs.x-lxs.y);
+    float min_near=step(3.,lxs.y);
+    intersectCount += (enough_dist*min_near);
   }
-  return lxs_ins;
+  return intersectCount;
 }
 
 void main()
@@ -344,17 +353,22 @@ void main()
   czm_material material = czm_getDefaultMaterial(materialInput);
   material.diffuse = color.rgb;
   material.alpha = color.a;
-    
+
   int suncount=lxs_0.length();
   int boxuniform_count=boxcenters_1.length()/2;
-  int shinecount=0;
+  float shinecount=0.;
   vec3 pos=v_positionHigh+v_positionLow;
-  vec3 dir=lxs_0[0];
-  // float lxs_dis=dot(v_normal,lxs_0[i]);
-  // if(lxs_dis<0.001) color=vec4(1.);
-  vec2 lxs=sunshine(0,pos,boxuniform_count,int(v_boxid));
+
+
+  for(int i=0;i<suncount;i++){
+    float lxs_front=dot(v_normal,lxs_0[i]);
+    lxs_front=step(0.01,lxs_front);
+    shinecount+=(1.-step(0.1,sunshine(i,pos,boxuniform_count,int(v_boxid))))*lxs_front;
+  }
   // 噪声严重！！！
-  color=vec4(lxs.y/100.,0.,0.,1.);
+  // 单独计算一个立方体相交，结果尚可
+
+  color=vec4(shinecount,0.,0.,1.);
   out_FragColor=color;
 }`,
       vertexShaderSource: `in vec3 position3DHigh;
