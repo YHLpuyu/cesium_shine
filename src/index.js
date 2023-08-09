@@ -95,7 +95,7 @@ const tgplane = new Plane(nor, dist);
 
 const startDate = JulianDate.fromDate(new Date("2023/07/02 18:00:00"));
 viewer.clockViewModel.currentTime = startDate;
-const hours = 1;
+const hours = 24;
 const sunposs = [];
 for (let i = 0; i < hours; i++) {
   const date = new JulianDate();
@@ -321,8 +321,6 @@ float sunshine(int sunidx,vec3 pos,int boxcount,int boxidx){
   float intersectCount=0.;
 
   for(int i=0;i<boxcount;i++){
-    // if(i==boxidx) continue;
-
     vec3 boxcenter=boxcenters_1[i*2]+boxcenters_1[i*2+1]-rtc_lxs_3;
     vec3 axisx=boxaxies_2[i*3];
     vec3 axisy=boxaxies_2[i*3+1];
@@ -368,7 +366,7 @@ void main()
   // 噪声严重！！！
   // 单独计算一个立方体相交，结果尚可
 
-  color=vec4(shinecount,0.,0.,1.);
+  color=vec4(shinecount/13.,0.,0.,1.);
   out_FragColor=color;
 }`,
       vertexShaderSource: `in vec3 position3DHigh;
