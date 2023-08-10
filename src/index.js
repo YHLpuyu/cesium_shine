@@ -50,7 +50,7 @@ console.log(axisx_lxs);
 
 // Your access token can be found at: https://cesium.com/ion/tokens.
 // This is the default access token
-Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3YWU3ZjI2YS03MTVlLTRlOTItOWRmZC0xYTJiMTRiYTc0MDAiLCJpZCI6MzY2NzcsImlhdCI6MTYzMTg1NTMwNH0.20xeGHU5b77CmOUM7bxXdB_gkGfdkCyNAI7T14cEME8';
+Ion.defaultAccessToken = 'your key';
 
 const gui = new GUI();
 
